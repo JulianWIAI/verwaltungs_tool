@@ -12,6 +12,7 @@ ohne sie alle gleichzeitig im Speicher zu halten (Lazy Loading).
 
 import sys          # Zugriff auf Kommandozeilenargumente und Beenden der App
 import os           # Betriebssystem-Funktionen, z. B. Pfade ermitteln
+import ctypes       # Zugriff auf Windows-API-Funktionen (für das Taskleisten-Icon)
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QLabel, QPushButton, QFrame, QStackedWidget, QStatusBar,
@@ -288,6 +289,12 @@ class MainWindow(QMainWindow):
         # Titelleiste des Betriebssystemfensters
         self.setWindowTitle("Radsport Koch GmbH – Verwaltungssystem")
 
+        # Fenster-Icon setzen (erscheint in der Titelleiste des Fensters)
+        # os.path.dirname(__file__) gibt das Verzeichnis dieser Skript-Datei zurück,
+        # damit das Icon unabhängig vom Arbeitsverzeichnis gefunden wird
+        icon_pfad = os.path.join(os.path.dirname(__file__), "app_icon.png")
+        self.setWindowIcon(QIcon(icon_pfad))
+
         # Mindestgröße: Die App soll nicht kleiner als 1280×780 Pixel werden
         self.setMinimumSize(1280, 780)
 
@@ -494,6 +501,15 @@ def main():
     Erstellt die QApplication, initialisiert die Datenbank,
     öffnet das Hauptfenster und startet die Qt-Ereignisschleife.
     """
+    # Windows-Taskleisten-Icon fix:
+    # Windows gruppiert Taskleisten-Buttons anhand der "AppUserModelID".
+    # Ohne diese ID erbt das Programm das Icon des Python-Interpreters.
+    # SetCurrentProcessExplicitAppUserModelID() weist dem Prozess eine eigene
+    # ID zu, sodass Windows das Qt-Fenster-Icon in der Taskleiste anzeigt.
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+        "RadsportKoch.Verwaltungssystem.1"
+    )
+
     # QApplication muss als erstes erstellt werden – sie verwaltet die GUI-Ressourcen.
     # sys.argv übergibt eventuelle Kommandozeilenargumente an Qt.
     app = QApplication(sys.argv)
@@ -501,6 +517,13 @@ def main():
     # Metadaten der Anwendung (werden z. B. in Systemdialogen angezeigt)
     app.setApplicationName("Radsport Koch GmbH")
     app.setApplicationVersion("1.0.0")
+
+    # App-Icon setzen – dieses Icon erscheint in der Windows-Taskleiste,
+    # im Alt-Tab-Dialog und überall dort, wo das Betriebssystem ein App-Symbol anzeigt.
+    # Es muss auf der QApplication gesetzt werden (nicht nur auf dem Fenster),
+    # damit Windows es als Taskleisten-Icon erkennt.
+    icon_pfad = os.path.join(os.path.dirname(__file__), "app_icon.png")
+    app.setWindowIcon(QIcon(icon_pfad))
 
     # Globales Stylesheet auf die gesamte Anwendung anwenden
     app.setStyleSheet(MAIN_STYLE)

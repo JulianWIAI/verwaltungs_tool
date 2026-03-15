@@ -31,6 +31,7 @@ Entwickelt mit **Python 3.10+**, **PyQt6** und **SQLite**.
 - **Doppelklick** zum Öffnen/Bearbeiten in allen Tabellen
 - **Fremdschlüssel-Schutz**: Kunden/Artikel mit Bestellungen können nicht gelöscht werden
 - **Beispieldaten** werden beim ersten Start automatisch eingefügt
+- **CSV-Export** für Kunden, Artikel und Bestellungen (Excel-kompatibel)
 
 ---
 
@@ -98,6 +99,7 @@ v_artikel_uebersicht        -- Artikel mit Kategoriename & Statusinfo
 - **Löschen**: Schaltfläche „🗑️" (Schutz vor versehentlichem Löschen bei verknüpften Daten)
 - **Suchen**: Suchfeld oben links – Echtzeit-Filterung
 - **Bestellstatus ändern**: In den Bestelldetails (🔍-Button) direkt updaten
+- **CSV exportieren**: Schaltfläche „📥 CSV exportieren" in der Toolbar – speichert die aktuell gefilterte Liste als `.csv`-Datei (mit Semikolon-Trennzeichen, direkt in Excel öffenbar)
 
 ---
 

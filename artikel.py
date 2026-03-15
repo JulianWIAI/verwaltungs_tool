@@ -34,12 +34,16 @@ Datenbankoperationen und das Modul `styles` für einheitliche Farben.
 # QMessageBox      – Vorgefertigte Meldungsfenster
 # QCheckBox        – Ankreuzfeld (True/False)
 # QAbstractItemView– Basisklasse mit Konstanten für Ansichten
+# QFileDialog      – Dialog zum Auswählen eines Speicherorts für Dateien
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QFrame,
     QLineEdit, QDialog, QTextEdit, QComboBox, QSpinBox,
-    QDoubleSpinBox, QMessageBox, QCheckBox, QAbstractItemView
+    QDoubleSpinBox, QMessageBox, QCheckBox, QAbstractItemView, QFileDialog
 )
+
+# csv – Standardbibliothek zum Lesen und Schreiben von CSV-Dateien
+import csv
 
 # Qt        – Globale Konstanten (z.B. Ausrichtungsflags)
 # pyqtSignal– Erstellt anwendungseigene Signale
@@ -544,6 +548,13 @@ class ArtikelWidget(QWidget):
         neu_btn.clicked.connect(self._neuer_artikel)
         toolbar.addWidget(neu_btn)
 
+        # "CSV exportieren"-Button: speichert die aktuell angezeigte Artikelliste als CSV
+        csv_btn = QPushButton("📥  CSV exportieren")
+        csv_btn.setObjectName("btn_icon")  # Sekundäres Styling
+        csv_btn.setFixedHeight(40)
+        csv_btn.clicked.connect(self._exportiere_csv)
+        toolbar.addWidget(csv_btn)
+
         layout.addLayout(toolbar)
 
         # --- Info-Zeile ---
@@ -840,3 +851,86 @@ class ArtikelWidget(QWidget):
                 # Artikel ist in Bestellungen referenziert und kann nicht gelöscht werden
                 QMessageBox.warning(self, "Nicht möglich",
                     "Dieser Artikel ist in Bestellungen vorhanden und kann nicht gelöscht werden.")
+
+    def _exportiere_csv(self):
+        """
+        Exportiert alle aktuell angezeigten Artikel als CSV-Datei.
+
+        Berücksichtigt werden der aktuelle Suchtext und der gewählte
+        Kategoriefilter – es werden genau die Artikel exportiert, die
+        gerade in der Tabelle sichtbar sind.
+
+        Die Datei wird mit Semikolon als Trennzeichen und UTF-8-BOM
+        kodiert gespeichert, damit Excel Umlaute korrekt darstellt.
+        """
+        # Datei-Speicherdialog öffnen
+        pfad, _ = QFileDialog.getSaveFileName(
+            self,
+            "Artikel exportieren",
+            "artikel_export.csv",
+            "CSV-Dateien (*.csv)"
+        )
+        if not pfad:
+            return  # Abbrechen gedrückt – nichts tun
+
+        # Aktuellen Suchtext lesen und Artikel aus der Datenbank laden
+        suche = self.search_edit.text().strip()
+        artikel = db.get_alle_artikel(suche)
+
+        # Kategoriefilter anwenden (gleiche Logik wie in refresh())
+        kat_filter = self.filter_combo.currentData()
+        if kat_filter:
+            kat_name = self.filter_combo.currentText()
+            # List Comprehension: nur Artikel der gewählten Kategorie behalten
+            artikel = [a for a in artikel if a.get("kategorie") == kat_name]
+
+        try:
+            with open(pfad, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f, delimiter=";")
+
+                # Kopfzeile schreiben
+                writer.writerow([
+                    "Artikelnummer", "Bezeichnung", "Kategorie", "Hersteller",
+                    "Lieferant", "EK (€)", "VK Netto (€)", "VK Brutto (€)",
+                    "MwSt. (%)", "Lagerbestand", "Mindestbestand", "Einheit", "Status"
+                ])
+
+                # Eine Zeile pro Artikel schreiben
+                for a in artikel:
+                    # Brutto-Preis berechnen: Netto × (1 + MwSt./100)
+                    vk_brutto = a.get("verkaufspreis", 0) * (1 + a.get("mwst_satz", 19) / 100)
+
+                    # Status als lesbaren Text ermitteln
+                    if not a.get("aktiv", 1):
+                        status = "Inaktiv"
+                    elif a.get("nachbestellen"):
+                        status = "Nachbestellen"
+                    else:
+                        status = "Verfügbar"
+
+                    writer.writerow([
+                        a.get("artikelnummer", ""),
+                        a.get("bezeichnung", ""),
+                        a.get("kategorie") or "",
+                        a.get("hersteller") or "",
+                        a.get("lieferant") or "",
+                        # :.2f formatiert auf genau 2 Nachkommastellen
+                        f"{a.get('einkaufspreis', 0):.2f}",
+                        f"{a.get('verkaufspreis', 0):.2f}",
+                        f"{vk_brutto:.2f}",
+                        a.get("mwst_satz", 19),
+                        a.get("lagerbestand", 0),
+                        a.get("mindestbestand", 0),
+                        a.get("einheit", ""),
+                        status,
+                    ])
+
+            # Erfolgsmeldung anzeigen
+            QMessageBox.information(
+                self, "Export erfolgreich",
+                f"{len(artikel)} Artikel wurden exportiert nach:\n{pfad}"
+            )
+
+        except Exception as fehler:
+            # Fehlermeldung bei Schreibproblemen (z. B. fehlende Berechtigungen)
+            QMessageBox.warning(self, "Fehler beim Export", str(fehler))

@@ -33,12 +33,16 @@ Datenbankoperationen sowie das Modul `styles` für einheitliche Farben.
 # QSizePolicy      – Legt fest, wie ein Widget seinen Platz ausfüllt
 # QDateEdit        – Eingabefeld speziell für Datumsangaben
 # QAbstractItemView– Basisklasse für alle Ansichts-Widgets (definiert Konstanten)
+# QFileDialog      – Dialog zum Auswählen eines Speicherorts für Dateien
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QFrame,
     QLineEdit, QDialog, QFormLayout, QTextEdit, QComboBox,
-    QMessageBox, QSizePolicy, QDateEdit, QAbstractItemView
+    QMessageBox, QSizePolicy, QDateEdit, QAbstractItemView, QFileDialog
 )
+
+# csv – Standardbibliothek zum Lesen und Schreiben von CSV-Dateien
+import csv
 
 # Qt        – Enthält globale Konstanten (z.B. Ausrichtungsflags)
 # QDate     – Klasse für Datumsoperationen (ohne Uhrzeit)
@@ -489,6 +493,13 @@ class KundenWidget(QWidget):
         self.neu_btn.clicked.connect(self._neuer_kunde)
         toolbar.addWidget(self.neu_btn)
 
+        # "CSV exportieren"-Button: speichert die aktuell angezeigte Liste als CSV-Datei
+        csv_btn = QPushButton("📥  CSV exportieren")
+        csv_btn.setObjectName("btn_icon")  # Sekundäres Styling (grauer Button)
+        csv_btn.setFixedHeight(40)
+        csv_btn.clicked.connect(self._exportiere_csv)
+        toolbar.addWidget(csv_btn)
+
         layout.addLayout(toolbar)
 
         # --- Info-Zeile ---
@@ -733,3 +744,74 @@ class KundenWidget(QWidget):
                     self, "Nicht möglich",
                     "Dieser Kunde hat noch Bestellungen und kann nicht gelöscht werden."
                 )
+
+    def _exportiere_csv(self):
+        """
+        Exportiert alle aktuell angezeigten Kunden als CSV-Datei.
+
+        Der Benutzer wählt über einen Datei-Speicherdialog den Speicherort
+        und Dateinamen. Die CSV-Datei enthält alle Kundenspalten und wird
+        mit dem Trennzeichen Semikolon (;) gespeichert, damit sie in
+        deutschem Excel direkt geöffnet werden kann.
+
+        Berücksichtigt wird der aktuelle Suchfilter – es werden genau
+        die Kunden exportiert, die gerade in der Tabelle sichtbar sind.
+        """
+        # Datei-Speicherdialog öffnen; gibt den gewählten Pfad zurück
+        # (oder einen leeren String, wenn der Nutzer abbricht)
+        pfad, _ = QFileDialog.getSaveFileName(
+            self,                       # Elternfenster
+            "Kunden exportieren",       # Fenstertitel
+            "kunden_export.csv",        # Vorgeschlagener Dateiname
+            "CSV-Dateien (*.csv)"       # Dateifilter im Dialog
+        )
+        # Wenn kein Pfad gewählt wurde (Abbrechen gedrückt), nichts tun
+        if not pfad:
+            return
+
+        # Aktuelle Kunden mit dem aktiven Suchfilter aus der Datenbank laden
+        kunden = db.get_alle_kunden(self.search_edit.text().strip())
+
+        try:
+            # Datei zum Schreiben öffnen
+            # newline="" ist bei csv.writer auf Windows erforderlich (verhindert
+            # doppelte Zeilenumbrüche)
+            # encoding="utf-8-sig" fügt eine BOM-Markierung ein, damit Excel
+            # Umlaute (ä, ö, ü) korrekt anzeigt
+            with open(pfad, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f, delimiter=";")
+
+                # Kopfzeile mit den Spaltennamen schreiben
+                writer.writerow([
+                    "Kundennummer", "Vorname", "Nachname", "E-Mail",
+                    "Telefon", "Straße", "PLZ", "Ort", "Land",
+                    "Geburtsdatum", "Erstellt am"
+                ])
+
+                # Eine Zeile pro Kunde schreiben
+                for k in kunden:
+                    writer.writerow([
+                        k.get("kundennummer", ""),
+                        k.get("vorname", ""),
+                        k.get("nachname", ""),
+                        k.get("email", ""),
+                        k.get("telefon", ""),
+                        k.get("strasse", ""),
+                        k.get("plz", ""),
+                        k.get("ort", ""),
+                        k.get("land", ""),
+                        k.get("geburtsdatum", ""),
+                        # Datum auf die ersten 10 Zeichen kürzen ("2024-01-15T..." → "2024-01-15")
+                        (k.get("erstellt_am", "") or "")[:10],
+                    ])
+
+            # Erfolgsmeldung mit Anzahl der exportierten Datensätze anzeigen
+            QMessageBox.information(
+                self, "Export erfolgreich",
+                f"{len(kunden)} Kunde(n) wurden exportiert nach:\n{pfad}"
+            )
+
+        except Exception as fehler:
+            # Fehlermeldung anzeigen, falls das Schreiben nicht möglich war
+            # (z. B. keine Schreibrechte, Datei bereits geöffnet)
+            QMessageBox.warning(self, "Fehler beim Export", str(fehler))

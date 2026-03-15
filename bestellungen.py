@@ -31,8 +31,11 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QFrame,
     QLineEdit, QDialog, QComboBox, QTextEdit, QDoubleSpinBox,
     QSpinBox, QMessageBox, QSizePolicy, QScrollArea, QAbstractItemView,
-    QDateEdit, QSplitter
+    QDateEdit, QSplitter, QFileDialog
 )
+
+# csv – Standardbibliothek zum Lesen und Schreiben von CSV-Dateien
+import csv
 # Qt enthält Konstanten (z. B. für Ausrichtung), pyqtSignal ermöglicht eigene
 # Signale, QDate ist PyQt6s Klasse für Datumswerte.
 from PyQt6.QtCore import Qt, pyqtSignal, QDate
@@ -1199,6 +1202,13 @@ class BestellungenWidget(QWidget):
         neu_btn.clicked.connect(self._neue_bestellung)
         toolbar.addWidget(neu_btn)
 
+        # "CSV exportieren"-Button: speichert die aktuell gefilterte Bestellliste als CSV
+        csv_btn = QPushButton("📥  CSV exportieren")
+        csv_btn.setObjectName("btn_icon")  # Sekundäres Styling
+        csv_btn.setFixedHeight(40)
+        csv_btn.clicked.connect(self._exportiere_csv)
+        toolbar.addWidget(csv_btn)
+
         layout.addLayout(toolbar)
 
         # --- Info-Zeile: zeigt Anzahl und Gesamtumsatz der gefilterten Bestellungen ---
@@ -1462,3 +1472,67 @@ class BestellungenWidget(QWidget):
             db.loesche_bestellung(bid)          # Datenbankzeile entfernen
             self.refresh()                       # Tabelle neu laden
             self.bestellungen_geaendert.emit()   # Dashboard informieren
+
+    def _exportiere_csv(self):
+        """
+        Exportiert alle aktuell angezeigten Bestellungen als CSV-Datei.
+
+        Berücksichtigt werden der aktuelle Suchtext und der gewählte
+        Statusfilter – es werden genau die Bestellungen exportiert, die
+        gerade in der Tabelle sichtbar sind.
+
+        Die Datei wird mit Semikolon als Trennzeichen und UTF-8-BOM
+        kodiert gespeichert, damit Excel Umlaute korrekt darstellt.
+        """
+        # Datei-Speicherdialog öffnen
+        pfad, _ = QFileDialog.getSaveFileName(
+            self,
+            "Bestellungen exportieren",
+            "bestellungen_export.csv",
+            "CSV-Dateien (*.csv)"
+        )
+        if not pfad:
+            return  # Abbrechen gedrückt – nichts tun
+
+        # Aktuelle Filter aus der Toolbar lesen (gleiche Logik wie in refresh())
+        suche = self.search_edit.text().strip()
+        status = self.status_filter.currentData()
+
+        # Bestellungen mit denselben Filtern wie in der Tabelle laden
+        bestellungen = db.get_alle_bestellungen(suche, status)
+
+        try:
+            with open(pfad, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f, delimiter=";")
+
+                # Kopfzeile mit allen Spaltennamen schreiben
+                writer.writerow([
+                    "Bestellnummer", "Datum", "Kunde", "Anzahl Positionen",
+                    "Netto (€)", "Brutto (€)", "Status",
+                    "Zahlungsart", "Zahlungsstatus"
+                ])
+
+                # Eine Zeile pro Bestellung schreiben
+                for b in bestellungen:
+                    writer.writerow([
+                        b.get("bestellnummer", ""),
+                        # Datum auf die ersten 10 Zeichen kürzen (ohne Uhrzeit)
+                        str(b.get("bestelldatum", ""))[:10],
+                        b.get("kunde_name", ""),
+                        b.get("anzahl_positionen", 0),
+                        f"{b.get('gesamtbetrag_netto', 0):.2f}",
+                        f"{b.get('gesamtbetrag_brutto', 0):.2f}",
+                        b.get("status", ""),
+                        b.get("zahlungsart", ""),
+                        b.get("zahlungsstatus", ""),
+                    ])
+
+            # Erfolgsmeldung mit Anzahl der exportierten Datensätze anzeigen
+            QMessageBox.information(
+                self, "Export erfolgreich",
+                f"{len(bestellungen)} Bestellung(en) wurden exportiert nach:\n{pfad}"
+            )
+
+        except Exception as fehler:
+            # Fehlermeldung bei Schreibproblemen (z. B. fehlende Berechtigungen)
+            QMessageBox.warning(self, "Fehler beim Export", str(fehler))
