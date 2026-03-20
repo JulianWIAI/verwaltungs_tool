@@ -506,9 +506,10 @@ def main():
     # Ohne diese ID erbt das Programm das Icon des Python-Interpreters.
     # SetCurrentProcessExplicitAppUserModelID() weist dem Prozess eine eigene
     # ID zu, sodass Windows das Qt-Fenster-Icon in der Taskleiste anzeigt.
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-        "RadsportKoch.Verwaltungssystem.1"
-    )
+    if sys.platform == "win32":
+        import ctypes
+        myappid = 'mycompany.myproduct.subproduct.version'  # Use whatever ID you had before
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     # QApplication muss als erstes erstellt werden – sie verwaltet die GUI-Ressourcen.
     # sys.argv übergibt eventuelle Kommandozeilenargumente an Qt.

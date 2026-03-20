@@ -497,7 +497,16 @@ class BestellungDialog(QDialog):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)    # Widget passt sich der Größe an
         scroll.setFrameShape(QFrame.Shape.NoFrame)  # Keinen Rahmen um den Scroll-Bereich
+        # 1. Make the scroll area background transparent so the dialog color shows,
+        # or set it explicitly to white.
+        scroll.setStyleSheet("QScrollArea { background-color: transparent; }")
         content = QWidget()               # Inhalts-Widget, das in die ScrollArea kommt
+        # 2. Give the content widget a specific ID name
+        content.setObjectName("bestellung_content")
+
+        # 3. Apply the white background ONLY to this specific widget.
+        # (Using the # ID prevents all your dropdowns/inputs from turning completely flat white too!)
+        content.setStyleSheet(f"QWidget#bestellung_content {{ background-color: {COLOR_WHITE}; }}")
         scroll.setWidget(content)
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(24, 20, 24, 20)
