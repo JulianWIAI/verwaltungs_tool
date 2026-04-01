@@ -30,11 +30,11 @@ from datetime import datetime  # Datum und Uhrzeit für Zeitstempel (erstellt_am
 # (funktioniert unter Windows, Linux und macOS).
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Pfad zur SQLite-Datenbankdatei (liegt im selben Ordner wie dieses Modul)
-DB_PATH = os.path.join(os.path.dirname(__file__), "radsport_koch.db")
-
-# Pfad zur SQL-Schema-Datei (enthält CREATE TABLE Anweisungen)
-SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "schema.sql")
+# All runtime and schema data lives under the data/ subdirectory,
+# keeping the project root clean and organised.
+_BASE_DIR   = os.path.dirname(__file__)
+DB_PATH     = os.path.join(_BASE_DIR, "data", "radsport_koch.db")
+SCHEMA_PATH = os.path.join(_BASE_DIR, "data", "schema.sql")
 
 
 def get_connection() -> sqlite3.Connection:

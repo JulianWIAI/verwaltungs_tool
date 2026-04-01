@@ -1,117 +1,171 @@
 # 🚲 Radsport Koch GmbH – Verwaltungssystem
 
-Professionelle Kundenverwaltungs- und Bestellsoftware für die **Radsport Koch GmbH**.
-Entwickelt mit **Python 3.10+**, **PyQt6** und **SQLite**.
+> A professional desktop management application for a bicycle retail business,
+> built with **Python 3.10+**, **PyQt6**, and **SQLite**.  
+> Manages customers, products, orders, and live business statistics — all without
+> an internet connection or an external database server.
 
 ---
 
-## 📋 Features
+## 📸 Screenshots
 
-### Kernfunktionen
-| Feature | Beschreibung |
-|---|---|
-| 👥 **Kundenverwaltung** | Anlegen, Bearbeiten, Löschen mit Adresse, Kontakt, Notizen |
-| 🚲 **Artikelverwaltung** | Produktkatalog mit Kategorien, Preisen, Lagerbestand |
-| 📦 **Bestellverwaltung** | Bestellungen mit Positionen, Status, Zahlung |
-| 🏠 **Dashboard** | Live-Statistiken, Umsatzdiagramm, Top-Artikel |
-| 🔍 **Suche** | Echtzeit-Suche in allen Bereichen |
-| 🗑️ **Löschfunktion** | Sicheres Löschen mit Integritätsprüfung |
+| Dashboard | Customers |
+|-----------|-----------|
+| ![Dashboard](assets/screenshots/dashboard.png) | ![Customers](assets/screenshots/kunden.png) |
 
-### Zusatzfeatures
-- **Automatische Kundennummern** (K-00001, K-00002, ...)
-- **Automatische Artikelnummern** (ART-00001, ...)
-- **Automatische Bestellnummern** (B-00001, ...)
-- **Lagerbestandswarnung** bei Unterschreitung des Mindestbestands
-- **Status-Badges** farbcodiert für Bestellstatus und Zahlungsstatus
-- **Bestelldetails** mit schnellem Status-Update
-- **Kategorien** für Artikel mit Farbcodierung
-- **MwSt.-Berechnung** (19%, 7%, 0%)
-- **Rabatt & Versandkosten** pro Bestellung
-- **Live-Summenberechnung** beim Erstellen von Bestellungen
-- **Doppelklick** zum Öffnen/Bearbeiten in allen Tabellen
-- **Fremdschlüssel-Schutz**: Kunden/Artikel mit Bestellungen können nicht gelöscht werden
-- **Beispieldaten** werden beim ersten Start automatisch eingefügt
-- **CSV-Export** für Kunden, Artikel und Bestellungen (Excel-kompatibel)
+| Products | Orders |
+|----------|--------|
+| ![Products](assets/screenshots/artikel.png) | ![Orders](assets/screenshots/bestellungen.png) |
 
 ---
 
-## 🛠️ Installation
+## ✨ Features
 
-### Voraussetzungen
+### Core Modules
+| Module | Description |
+|--------|-------------|
+| 🏠 **Dashboard** | Live KPI cards, 6-month revenue bar chart, top-selling products, order-status breakdown — auto-refreshes every 60 seconds |
+| 👥 **Customer Management** | Full CRUD with address, contact info, date of birth, notes, and auto-generated customer numbers (K-00001 …) |
+| 🚲 **Product Catalogue** | Articles with categories, purchase/sale prices, VAT rate, stock levels, re-order warnings, and status badges |
+| 📦 **Order Management** | Multi-line orders with live subtotal, discount, shipping costs, payment status, and a read-only detail view |
+
+### Additional Capabilities
+- **Real-time search** across all three list views (filtered as you type)
+- **CSV export** for customers, products, and orders — semicolon-delimited, opens directly in Excel
+- **Auto-generated document numbers** — K-00001, ART-00001, B-00001
+- **Re-order warnings** when stock falls below the configured minimum
+- **Foreign-key protection** — customers/products referenced by orders cannot be deleted
+- **Colour-coded status badges** for order status and payment status
+- **Double-click to edit** in every table
+- **Automatic sample data** on first launch so the app is immediately explorable
+- **Windows taskbar icon** via `AppUserModelID` fix
+
+---
+
+## 🗂️ Project Structure
+
+The project follows a strict **one class per file** modular architecture.
+Every UI class lives in its own dedicated module inside the `SBS/` package
+(*Single-class Building System*), making the codebase easy to navigate,
+test, and extend independently.
+
 ```
-Python 3.10 oder neuer
-PyQt6
+verwaltungs_tool/
+│
+├── main.py                  # Entry point — bootstraps Qt, icon, DB, event loop
+├── database.py              # Data-access layer — all SQLite queries
+├── styles.py                # Centralised colour constants & Qt stylesheet
+│
+├── assets/
+│   ├── app_icon.png         # Application icon (taskbar & title bar)
+│   └── screenshots/         # README screenshots
+│
+├── data/
+│   ├── schema.sql           # Database schema & seed data (CREATE TABLE + INSERT)
+│   └── radsport_koch.db     # SQLite database file (auto-created on first run)
+│
+└── SBS/                     # One class per file — the full UI layer
+    ├── __init__.py
+    ├── _utils.py            # Shared helper (colour badge factory)
+    │
+    ├── NavButton.py         # Sidebar navigation button
+    ├── Sidebar.py           # Left navigation panel
+    ├── PageHeader.py        # Per-page title bar
+    ├── MainWindow.py        # Main application window (lazy-loads pages)
+    │
+    ├── StatCard.py          # Dashboard KPI card
+    ├── MiniChart.py         # Revenue bar chart (pure PyQt6, no matplotlib)
+    ├── TopArtikelWidget.py  # Top-selling products list
+    ├── StatusVerteilungWidget.py  # Order-status breakdown
+    ├── DashboardWidget.py   # Dashboard page — assembles all cards & charts
+    │
+    ├── KundeDialog.py       # Create / edit customer dialog
+    ├── KundenWidget.py      # Customer list page
+    │
+    ├── ArtikelDialog.py     # Create / edit product dialog
+    ├── ArtikelWidget.py     # Product catalogue page
+    │
+    ├── PositionenTabelle.py      # Order line-item entry widget
+    ├── BestellungDialog.py       # Create / edit order dialog
+    ├── BestellungDetailDialog.py # Read-only order detail view
+    └── BestellungenWidget.py     # Order list page
 ```
 
-### Schritt 1 – PyQt6 installieren
+---
+
+## 🛠️ Setup & Execution
+
+### Prerequisites
+
+| Requirement | Version |
+|-------------|---------|
+| Python | 3.10 or newer |
+| PyQt6 | latest |
+
+### 1 — Install the dependency
+
 ```bash
 pip install PyQt6
 ```
 
-### Schritt 2 – Programm starten
+No other third-party packages are required. The database is SQLite, which is
+part of Python's standard library.
+
+### 2 — Run the application
+
 ```bash
-cd radsport_koch
+cd verwaltungs_tool
 python main.py
 ```
 
-Die SQLite-Datenbank (`radsport_koch.db`) wird beim ersten Start automatisch erstellt.
+The SQLite database (`data/radsport_koch.db`) and all tables are created
+automatically on the first start. Sample data is inserted so the application
+is immediately usable.
 
 ---
 
-## 📁 Projektstruktur
+## 🗄️ Database Schema
 
 ```
-radsport_koch/
-├── main.py           # Hauptprogramm & Hauptfenster
-├── database.py       # Alle Datenbankoperationen (SQLite)
-├── schema.sql        # Datenbankschema & Beispieldaten
-├── styles.py         # Zentrales Stylesheet & Farben
-├── dashboard.py      # Dashboard-Widget
-├── kunden.py         # Kundenverwaltung
-├── artikel.py        # Artikelverwaltung
-├── bestellungen.py   # Bestellverwaltung
-├── README.md         # Diese Datei
-└── radsport_koch.db  # SQLite-Datenbank (wird automatisch erstellt)
-```
+kunden                      — Customer master data
+kategorien                  — Product categories
+artikel                     — Product catalogue
+bestellungen                — Order headers
+bestellpositionen           — Individual order line items
 
----
-
-## 🗄️ Datenbankstruktur
-
-```sql
-kunden              -- Kundenstammdaten
-kategorien          -- Artikelkategorien
-artikel             -- Produktkatalog
-bestellungen        -- Bestellköpfe
-bestellpositionen   -- Positionen einer Bestellung
-
--- Views (zur einfachen Abfrage):
-v_bestellungen_uebersicht   -- Bestellungen mit Kundendaten & Summen
-v_artikel_uebersicht        -- Artikel mit Kategoriename & Statusinfo
+── Views (pre-computed for fast queries) ──
+v_bestellungen_uebersicht   — Orders joined with customer data and totals
+v_artikel_uebersicht        — Products joined with category name and stock status
 ```
 
 ---
 
-## 💡 Bedienung
+## 🧰 Technology Stack
 
-- **Neuen Datensatz anlegen**: Schaltfläche „➕ Neu..." klicken
-- **Bearbeiten**: Doppelklick auf eine Zeile **oder** Schaltfläche „✏️ Bearbeiten"
-- **Löschen**: Schaltfläche „🗑️" (Schutz vor versehentlichem Löschen bei verknüpften Daten)
-- **Suchen**: Suchfeld oben links – Echtzeit-Filterung
-- **Bestellstatus ändern**: In den Bestelldetails (🔍-Button) direkt updaten
-- **CSV exportieren**: Schaltfläche „📥 CSV exportieren" in der Toolbar – speichert die aktuell gefilterte Liste als `.csv`-Datei (mit Semikolon-Trennzeichen, direkt in Excel öffenbar)
-
----
-
-## 📸 Technologien
-
-| Technologie | Verwendung |
-|---|---|
-| **Python 3.10+** | Programmiersprache |
-| **PyQt6** | GUI-Framework |
-| **SQLite 3** | Datenbank (dateibasiert, keine Installation nötig) |
-| **SQL Views** | Berechnete Auswertungen (Umsatz, Status) |
+| Technology | Role |
+|------------|------|
+| **Python 3.10+** | Application language |
+| **PyQt6** | Desktop GUI framework |
+| **SQLite 3** | Embedded, file-based database — no server required |
+| **SQL Views** | Pre-computed aggregations for dashboard statistics |
 
 ---
 
-*Erstellt für den Bachelor Professional – Fachinformatiker*
+## 💡 Usage Tips
+
+| Action | How |
+|--------|-----|
+| Create a record | Click **➕ New …** in the toolbar |
+| Edit a record | Double-click a row **or** click **✏️ Edit** |
+| Delete a record | Click **🗑️** — protected if the record is referenced by an order |
+| Search | Type in the search bar — results filter in real time |
+| Filter products by category | Use the category dropdown next to the search bar |
+| Export to Excel | Click **📥 CSV Export** — opens directly in Excel |
+| Change order status | Open order details via 🔍 and update status inline |
+
+---
+
+## 📄 Development Note
+
+> This project was developed, polished, and refactored with the assistance
+> of Artificial Intelligence.
