@@ -1,92 +1,69 @@
 """
-ArtikelWidget – Main article management widget (the "Articles" tab).
+ArtikelWidget – Shopping-style article display (the "Articles" tab).
 
 Part of the Radsport Koch GmbH management system.
-Extracted into its own module as part of the SBS (Single-class Building System) package.
 
 Responsibilities:
-  - Display a searchable and category-filterable table of all articles.
-  - Show price (gross, including VAT) and a coloured status badge for each article.
-  - Allow creating, editing and deleting articles.
+  - Display articles as product cards in a responsive grid (like a shop).
+  - Search bar and category filter at the top.
+  - Allow creating, editing and deleting articles via toolbar / card buttons.
   - Export the currently visible list to a CSV file.
   - Emit the artikel_geaendert signal after any data change.
-
-Dependencies:
-  - database (db): all SQLite operations
-  - styles: centralised colour constants
-  - SBS.ArtikelDialog: the dialog for creating / editing a single article
 """
 
 import csv
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QFrame,
-    QLineEdit, QDialog, QComboBox, QMessageBox, QAbstractItemView, QFileDialog
+    QFrame, QLineEdit, QDialog, QComboBox, QMessageBox,
+    QFileDialog, QScrollArea, QGridLayout, QSizePolicy
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtGui import QFont
 
 import database as db
 from styles import (
-    COLOR_TEXT_LIGHT, COLOR_BORDER, COLOR_DANGER, COLOR_WARNING, COLOR_SUCCESS
+    COLOR_TEXT_LIGHT, COLOR_BORDER, COLOR_DANGER, COLOR_WARNING,
+    COLOR_SUCCESS, COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT
 )
 from SBS.ArtikelDialog import ArtikelDialog
 
 
 class ArtikelWidget(QWidget):
     """
-    Main widget for the "Articles" tab.
+    Shopping-style widget for the "Articles" tab.
 
-    Displays a searchable and category-filterable table of all articles.
-    For each article, the gross sale price (including VAT) and a coloured
-    status badge (Available / Reorder / Inactive) are shown.
+    Articles are displayed as product cards in a grid – similar to an online shop.
+    The toolbar at the top provides search, category filter, and management actions.
 
     Signals:
         artikel_geaendert: Emitted after an article is created, edited or deleted.
-                           Other parts of the application can receive this signal
-                           and update themselves (e.g. the order form).
     """
 
-    # Signal without parameters: only signals that something changed.
     artikel_geaendert = pyqtSignal()
 
+    # Number of card columns in the grid.
+    _COLS = 4
+
     def __init__(self, parent=None):
-        """
-        Construct the ArtikelWidget.
-
-        Builds the user interface and immediately loads all existing articles
-        from the database.
-
-        Args:
-            parent (QWidget, optional): Parent widget.
-        """
-        # Initialise the parent class QWidget.
         super().__init__(parent)
-
-        # Build the user interface.
         self._setup_ui()
-
-        # Immediately populate the table with current database data.
         self.refresh()
 
-    def _setup_ui(self):
-        """
-        Create the layout of the ArtikelWidget:
+    # ──────────────────────────────────────────────────────────────────────────
+    # UI construction
+    # ──────────────────────────────────────────────────────────────────────────
 
-          1. Toolbar    – search bar + category filter dropdown + "New Article" button.
-          2. Info row   – shows the number of results and reorder warnings.
-          3. Table      – shows all articles with a status badge and action buttons.
-        """
-        # Main layout: arrange areas vertically.
+    def _setup_ui(self):
+        """Build toolbar + info row + scrollable card grid."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 20, 24, 24)
         layout.setSpacing(16)
 
-        # --- Toolbar ---
+        # ── Toolbar ──────────────────────────────────────────────────────────
         toolbar = QHBoxLayout()
         toolbar.setSpacing(10)
 
-        # Search bar in the rounded "pill" style.
+        # Search bar (pill style).
         search_frame = QFrame()
         search_frame.setStyleSheet(f"""
             background: white;
@@ -96,296 +73,294 @@ class ArtikelWidget(QWidget):
         search_frame.setFixedHeight(40)
         search_layout = QHBoxLayout(search_frame)
         search_layout.setContentsMargins(14, 0, 14, 0)
-        # Magnifying glass as decoration (not a real icon widget).
         search_layout.addWidget(QLabel("🔍"))
 
-        # Text input for the search term.
         self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("Artikel suchen (Bezeichnung, Hersteller, Kategorie...)")
+        self.search_edit.setPlaceholderText("Artikel suchen (Bezeichnung, Hersteller, Kategorie…)")
         self.search_edit.setFrame(False)
         self.search_edit.setStyleSheet("background: transparent; border: none; font-size: 13px;")
-        # Update the table immediately on every keystroke.
         self.search_edit.textChanged.connect(self.refresh)
         search_layout.addWidget(self.search_edit)
-        # stretch=1: the search bar takes all available space in the toolbar.
         toolbar.addWidget(search_frame, stretch=1)
 
-        # Category filter dropdown next to the search bar.
+        # Category filter dropdown.
         self.filter_combo = QComboBox()
         self.filter_combo.setFixedHeight(40)
-        self.filter_combo.addItem("Alle Kategorien", "")   # Empty entry = no filter.
-        # Load all categories from the database and add them as entries.
+        self.filter_combo.addItem("Alle Kategorien", "")
         for k in db.get_kategorien():
             self.filter_combo.addItem(k["name"], k["id"])
-        # Update the table immediately when the selection changes.
         self.filter_combo.currentIndexChanged.connect(self.refresh)
         toolbar.addWidget(self.filter_combo)
 
-        # "New Article" button.
+        # "New article" button.
         neu_btn = QPushButton("➕  Neuer Artikel")
         neu_btn.setObjectName("btn_primary")
         neu_btn.setFixedHeight(40)
         neu_btn.clicked.connect(self._neuer_artikel)
         toolbar.addWidget(neu_btn)
 
-        # "Export CSV" button: saves the currently displayed article list as a CSV file.
+        # "Export CSV" button.
         csv_btn = QPushButton("📥  CSV exportieren")
-        csv_btn.setObjectName("btn_icon")  # Secondary styling.
+        csv_btn.setObjectName("btn_icon")
         csv_btn.setFixedHeight(40)
         csv_btn.clicked.connect(self._exportiere_csv)
         toolbar.addWidget(csv_btn)
 
         layout.addLayout(toolbar)
 
-        # --- Info row ---
-        # Shows e.g. "24 articles found  ·  ⚠️ 3 below minimum stock".
+        # ── Info row ─────────────────────────────────────────────────────────
         self.info_lbl = QLabel()
         self.info_lbl.setStyleSheet(f"color: {COLOR_TEXT_LIGHT}; font-size: 12px;")
         layout.addWidget(self.info_lbl)
 
-        # --- Table ---
-        self.table = QTableWidget()
-        self.table.setColumnCount(10)   # 10 columns: 8 data + 1 status + 1 actions.
+        # ── Scrollable card grid ──────────────────────────────────────────────
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setStyleSheet(f"background: {COLOR_BG};")
 
-        # Set table column headers.
-        self.table.setHorizontalHeaderLabels([
-            "Art.-Nr.", "Bezeichnung", "Kategorie", "Hersteller",
-            "EK", "VK (Brutto)", "Bestand", "Mind.", "Status", "Aktionen"
-        ])
+        # Container widget that holds the grid layout.
+        self.cards_container = QWidget()
+        self.cards_container.setStyleSheet(f"background: {COLOR_BG};")
 
-        # Zebra pattern: every other row has a different background.
-        self.table.setAlternatingRowColors(True)
+        self.cards_layout = QGridLayout(self.cards_container)
+        self.cards_layout.setSpacing(18)
+        self.cards_layout.setContentsMargins(4, 4, 4, 4)
+        self.cards_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
-        # A click selects the entire row, not just one cell.
-        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.scroll.setWidget(self.cards_container)
+        layout.addWidget(self.scroll)
 
-        # Cells cannot be edited directly in the table.
-        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-
-        # Hide row numbers on the left side.
-        self.table.verticalHeader().setVisible(False)
-
-        # Hide grid lines for a modern look.
-        self.table.setShowGrid(False)
-
-        # All columns stretch evenly; individual columns are adjusted below.
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-
-        # Columns with short content: adapt to their content (ResizeToContents).
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Art.-Nr.
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # EK
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # VK
-        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)  # Stock
-        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)  # Min.
-        self.table.horizontalHeader().setSectionResizeMode(8, QHeaderView.ResizeMode.ResizeToContents)  # Status
-        # Actions column: fixed width.
-        self.table.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(9, 160)
-
-        # Uniform row height for all rows.
-        self.table.verticalHeader().setDefaultSectionSize(46)
-
-        # Double-click opens the edit dialog for the clicked row.
-        self.table.doubleClicked.connect(self._bearbeite_zeile)
-
-        layout.addWidget(self.table)
+    # ──────────────────────────────────────────────────────────────────────────
+    # Data loading & display
+    # ──────────────────────────────────────────────────────────────────────────
 
     def refresh(self):
-        """
-        Load all articles from the database and repopulate the table.
-
-        Takes the following into account:
-          - The search term from the text field (full-text search in the database).
-          - The selected category filter (client-side filtering).
-
-        The info row shows the number of results and, if applicable, a warning
-        for articles below the minimum stock level.
-
-        Called:
-          - On first load (in the constructor).
-          - On keystroke in the search bar.
-          - On change of the category filter.
-          - After creating, editing or deleting an article.
-        """
-        # Get the search term from the input field.
+        """Reload articles from the database and rebuild the card grid."""
         suche = self.search_edit.text().strip()
-
-        # Load all articles matching the search term (database-side search).
         artikel = db.get_alle_artikel(suche)
 
-        # --- Category filter (client-side) ---
-        # currentData() returns the data value of the selected entry.
-        # "" means "All categories" (no filter active).
+        # Client-side category filter.
         kat_filter = self.filter_combo.currentData()
         if kat_filter:
-            # Read the currently selected category name.
             kat_name = self.filter_combo.currentText()
-            # Filter the list: keep only articles whose category matches.
-            # This is a list comprehension – shorthand for a for-loop with an if.
             artikel = [a for a in artikel if a.get("kategorie") == kat_name]
 
-        # Number of articles that are below the minimum stock level (reorder flag).
         nachbestellen = sum(1 for a in artikel if a.get("nachbestellen"))
-
-        # Build the info text.
         info = f"{len(artikel)} Artikel gefunden"
         if nachbestellen:
-            # Append a warning if at least one article needs to be reordered.
             info += f"  ·  ⚠️ {nachbestellen} unter Mindestbestand"
         self.info_lbl.setText(info)
 
-        # Adjust the number of table rows.
-        self.table.setRowCount(len(artikel))
+        # Remove all existing cards.
+        while self.cards_layout.count():
+            item = self.cards_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
 
-        # Fill each row with article data.
-        for row, a in enumerate(artikel):
-            # Calculate the gross sale price: net × (1 + VAT/100).
-            # Example: 100 € × (1 + 19/100) = 100 € × 1.19 = 119 €.
-            vk_brutto = a.get("verkaufspreis", 0) * (1 + a.get("mwst_satz", 19) / 100)
+        # Insert new cards.
+        for i, a in enumerate(artikel):
+            card = self._build_card(a)
+            row, col = divmod(i, self._COLS)
+            self.cards_layout.addWidget(card, row, col)
 
-            # The 8 data values to display as a list.
-            items = [
-                a.get("artikelnummer", ""),
-                a.get("bezeichnung", ""),
-                a.get("kategorie") or "–",       # "–" if no value present.
-                a.get("hersteller") or "–",
-                f"€ {a.get('einkaufspreis', 0):.2f}",  # Formatted to 2 decimal places.
-                f"€ {vk_brutto:.2f}",
-                str(a.get("lagerbestand", 0)),
-                str(a.get("mindestbestand", 0)),
-            ]
+        # Fill remaining columns in last row with spacers so cards don't stretch.
+        count = len(artikel)
+        if count % self._COLS:
+            used = count % self._COLS
+            for col in range(used, self._COLS):
+                spacer = QWidget()
+                spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+                self.cards_layout.addWidget(spacer, count // self._COLS, col)
 
-            # Fill columns 0–7 with the data values.
-            for col, text in enumerate(items):
-                item = QTableWidgetItem(text)
+    @staticmethod
+    def _get_emoji(a: dict) -> str:
+        """Return a category/name-appropriate emoji for the article."""
+        name = (a.get("bezeichnung") or "").lower()
+        kat  = (a.get("kategorie")  or "").lower()
 
-                # Store the invisible article ID in the cell (for later access).
-                item.setData(Qt.ItemDataRole.UserRole, a["id"])
+        # Name-based (highest priority)
+        if "helm"        in name:                         return "⛑️"
+        if "schloss"     in name or "lock" in name:       return "🔒"
+        if "pumpe"       in name:                         return "🫧"
+        if "computer"    in name or "garmin" in name or "gps" in name: return "🗺️"
+        if "hose"        in name or "trikot" in name or "jacke" in name: return "👕"
+        if "brems"       in name:                         return "🛑"
+        if "kette"       in name:                         return "⛓️"
+        if "reifen"      in name or "schlauch" in name:  return "🔄"
+        if "licht"       in name or "lampe" in name:     return "💡"
+        if "sattel"      in name:                         return "🪑"
+        if "pedal"       in name:                         return "🦶"
+        if "werkzeug"    in name or "schrauben" in name: return "🔧"
+        if "tasche"      in name or "rucksack" in name:  return "🎒"
+        if "flasche"     in name:                         return "🍶"
+        if "schuhe"      in name or "schuh" in name:     return "👟"
+        if "handschuh"   in name:                         return "🧤"
 
-                # Align text left-justified and vertically centred.
-                item.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        # Category-based (fallback)
+        if "helm"        in kat:  return "⛑️"
+        if "e-bike"      in kat:  return "⚡"
+        if "bekleidung"  in kat:  return "👕"
+        if "werkzeug"    in kat:  return "🔧"
+        if "ersatzteil"  in kat:  return "⚙️"
+        if "zubehör"     in kat:  return "🔩"
+        if "fahrrad"     in kat:  return "🚲"
 
-                # Special treatment for the stock column (column 6):
-                # If the article needs to be reordered, show the text in red and bold.
-                if col == 6 and a.get("nachbestellen"):
-                    item.setForeground(QColor(COLOR_DANGER))   # Red text colour.
-                    item.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+        return "🚲"
 
-                self.table.setItem(row, col, item)
+    def _build_card(self, a: dict) -> QFrame:
+        """
+        Create a single product card for the given article dict.
 
-            # --- Status badge (column 8) ---
-            # A coloured label is not a normal table item, so we need a separate
-            # widget as a container (setCellWidget).
-            status_widget = QWidget()
-            status_layout = QHBoxLayout(status_widget)
-            status_layout.setContentsMargins(6, 4, 6, 4)
+        The card layout (top → bottom):
+          1. Image placeholder area
+          2. Article number (small, muted)
+          3. Product name (bold)
+          4. Category / Manufacturer (muted)
+          5. Gross price (large, coloured)
+          6. Status badge
+          7. Action buttons (Edit / Delete)
+        """
+        card = QFrame()
+        card.setFixedWidth(230)
+        card.setStyleSheet(f"""
+            QFrame {{
+                background: white;
+                border: 1px solid {COLOR_BORDER};
+                border-radius: 12px;
+            }}
+            QFrame:hover {{
+                border: 1.5px solid {COLOR_PRIMARY};
+            }}
+        """)
+        card.setCursor(Qt.CursorShape.PointingHandCursor)
 
-            # Create the appropriate badge depending on the article status.
-            if not a.get("aktiv", 1):
-                # Article is deactivated (e.g. discontinued model).
-                badge = QLabel("Inaktiv")
-                badge.setStyleSheet(
-                    "background:#f0f2f5; color:#6c757d; border-radius:8px; "
-                    "padding:3px 8px; font-size:11px; font-weight:600;"
-                )
-            elif a.get("nachbestellen"):
-                # Stock is below the minimum – show a warning.
-                # "22" at the end of the colour = hex alpha value (approx. 13% opacity).
-                # This produces a very transparent background in the warning colour.
-                badge = QLabel("⚠ Nachbestellen")
-                badge.setStyleSheet(
-                    f"background:{COLOR_WARNING}22; color:{COLOR_WARNING}; "
-                    "border-radius:8px; padding:3px 8px; font-size:11px; font-weight:600;"
-                )
-            else:
-                # All good: article is active and sufficiently stocked.
-                badge = QLabel("✓ Verfügbar")
-                badge.setStyleSheet(
-                    f"background:{COLOR_SUCCESS}22; color:{COLOR_SUCCESS}; "
-                    "border-radius:8px; padding:3px 8px; font-size:11px; font-weight:600;"
-                )
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(0, 0, 0, 12)
+        card_layout.setSpacing(6)
 
-            status_layout.addWidget(badge)
-            # Insert the badge widget into column 8 of the current row.
-            self.table.setCellWidget(row, 8, status_widget)
+        # ── 1. Image placeholder ──────────────────────────────────────────────
+        img_frame = QFrame()
+        img_frame.setFixedHeight(140)
+        img_frame.setStyleSheet(f"""
+            background: {COLOR_BG};
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            border-bottom-left-radius: 0px;
+            border-bottom-right-radius: 0px;
+        """)
+        img_layout = QVBoxLayout(img_frame)
+        img_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            # --- Action buttons (column 9) ---
-            btn_widget = QWidget()
-            btn_layout = QHBoxLayout(btn_widget)
-            btn_layout.setContentsMargins(6, 4, 6, 4)
-            btn_layout.setSpacing(6)
+        bike_lbl = QLabel(self._get_emoji(a))
+        bike_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        bike_lbl.setStyleSheet("font-size: 52px; border: none; background: transparent;")
+        img_layout.addWidget(bike_lbl)
 
-            # "Edit" button with stored article ID.
-            edit_btn = QPushButton("✏️ Bearbeiten")
-            edit_btn.setObjectName("btn_icon")
-            edit_btn.setFixedHeight(30)
-            # Store the article ID as a property so the slot knows which article is meant.
-            edit_btn.setProperty("art_id", a["id"])
-            edit_btn.clicked.connect(self._bearbeite_artikel)
+        card_layout.addWidget(img_frame)
 
-            # "Delete" button (trash icon only, square).
-            del_btn = QPushButton("🗑️")
-            del_btn.setObjectName("btn_danger")
-            del_btn.setFixedSize(30, 30)
-            del_btn.setProperty("art_id", a["id"])
-            del_btn.clicked.connect(self._loesche_artikel)
+        # ── Inner padding container ───────────────────────────────────────────
+        inner = QWidget()
+        inner.setStyleSheet("background: transparent; border: none;")
+        inner_layout = QVBoxLayout(inner)
+        inner_layout.setContentsMargins(12, 6, 12, 0)
+        inner_layout.setSpacing(4)
 
-            btn_layout.addWidget(edit_btn)
-            btn_layout.addWidget(del_btn)
+        # ── 2. Article number ─────────────────────────────────────────────────
+        art_nr = QLabel(a.get("artikelnummer", ""))
+        art_nr.setStyleSheet(f"font-size: 10px; color: {COLOR_TEXT_LIGHT}; font-weight: 500; border: none;")
+        inner_layout.addWidget(art_nr)
 
-            # Insert the button widget into the action column of the current row.
-            self.table.setCellWidget(row, 9, btn_widget)
+        # ── 3. Product name ───────────────────────────────────────────────────
+        name = QLabel(a.get("bezeichnung", ""))
+        name.setWordWrap(True)
+        name.setStyleSheet(f"font-size: 13px; font-weight: 700; color: {COLOR_TEXT}; border: none;")
+        name.setMaximumWidth(206)
+        inner_layout.addWidget(name)
+
+        # ── 4. Category & Manufacturer ────────────────────────────────────────
+        cat_mfr_parts = []
+        if a.get("kategorie"):
+            cat_mfr_parts.append(a["kategorie"])
+        if a.get("hersteller"):
+            cat_mfr_parts.append(a["hersteller"])
+        meta_lbl = QLabel("  ·  ".join(cat_mfr_parts) if cat_mfr_parts else "")
+        meta_lbl.setStyleSheet(f"font-size: 11px; color: {COLOR_TEXT_LIGHT}; border: none;")
+        meta_lbl.setWordWrap(True)
+        inner_layout.addWidget(meta_lbl)
+
+        inner_layout.addSpacing(4)
+
+        # ── 5. Gross price ────────────────────────────────────────────────────
+        vk_brutto = a.get("verkaufspreis", 0) * (1 + a.get("mwst_satz", 19) / 100)
+        price_lbl = QLabel(f"€ {vk_brutto:.2f}")
+        price_lbl.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {COLOR_SECONDARY}; border: none;")
+        inner_layout.addWidget(price_lbl)
+
+        # ── 6. Status badge ───────────────────────────────────────────────────
+        if not a.get("aktiv", 1):
+            badge_text, badge_style = "Inaktiv", (
+                "background:#f0f2f5; color:#6c757d; border-radius:8px; "
+                "padding:2px 8px; font-size:10px; font-weight:600;"
+            )
+        elif a.get("nachbestellen"):
+            badge_text = "⚠ Nachbestellen"
+            badge_style = (
+                f"background:{COLOR_WARNING}22; color:{COLOR_WARNING}; "
+                "border-radius:8px; padding:2px 8px; font-size:10px; font-weight:600;"
+            )
+        else:
+            badge_text = "✓ Verfügbar"
+            badge_style = (
+                f"background:{COLOR_SUCCESS}22; color:{COLOR_SUCCESS}; "
+                "border-radius:8px; padding:2px 8px; font-size:10px; font-weight:600;"
+            )
+
+        badge = QLabel(badge_text)
+        badge.setStyleSheet(badge_style)
+        badge.setFixedHeight(22)
+        inner_layout.addWidget(badge)
+
+        inner_layout.addSpacing(4)
+
+        # ── 7. Action buttons ─────────────────────────────────────────────────
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(6)
+
+        edit_btn = QPushButton("✏️ Bearbeiten")
+        edit_btn.setObjectName("btn_icon")
+        edit_btn.setFixedHeight(30)
+        edit_btn.setProperty("art_id", a["id"])
+        edit_btn.clicked.connect(self._bearbeite_artikel)
+        btn_row.addWidget(edit_btn)
+
+        del_btn = QPushButton("🗑️")
+        del_btn.setObjectName("btn_danger")
+        del_btn.setFixedSize(30, 30)
+        del_btn.setProperty("art_id", a["id"])
+        del_btn.clicked.connect(self._loesche_artikel)
+        btn_row.addWidget(del_btn)
+
+        inner_layout.addLayout(btn_row)
+
+        card_layout.addWidget(inner)
+
+        return card
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Slots – article management
+    # ──────────────────────────────────────────────────────────────────────────
 
     def _neuer_artikel(self):
-        """
-        Open ArtikelDialog to create a new article.
-
-        After saving, the article is stored in the database, the table is
-        refreshed and the artikel_geaendert signal is emitted.
-        """
-        # Open the dialog without existing article data (new article).
         dlg = ArtikelDialog(self)
-
-        # exec() blocks until the dialog is closed.
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            # Write the form data from the dialog to the database.
             db.speichere_artikel(dlg.result_data)
-            # Refresh the table so the new article appears.
             self.refresh()
-            # Notify other widgets (e.g. the order form) about the change.
             self.artikel_geaendert.emit()
 
-    def _bearbeite_zeile(self, index):
-        """
-        Called when the user double-clicks a table row.
-        Opens ArtikelDialog for the article in the clicked row.
-
-        Args:
-            index (QModelIndex): Position of the clicked cell (contains row and column).
-        """
-        # Get the cell in column 0 of the clicked row.
-        item = self.table.item(index.row(), 0)
-        if item:
-            # Read the hidden article ID from the cell and load the article data.
-            a = db.get_artikel(item.data(Qt.ItemDataRole.UserRole))
-            if a:
-                dlg = ArtikelDialog(self, a)
-                if dlg.exec() == QDialog.DialogCode.Accepted:
-                    db.speichere_artikel(dlg.result_data)
-                    self.refresh()
-                    self.artikel_geaendert.emit()
-
     def _bearbeite_artikel(self):
-        """
-        Slot for the "Edit" button in the action column.
-
-        self.sender() returns the button that emitted the signal.
-        The correct article is loaded from the database via the stored "art_id" property.
-        """
-        # The button that triggered the click.
         btn = self.sender()
-
-        # Load the article data via the ID stored in the button.
         a = db.get_artikel(btn.property("art_id"))
         if a:
             dlg = ArtikelDialog(self, a)
@@ -395,102 +370,68 @@ class ArtikelWidget(QWidget):
                 self.artikel_geaendert.emit()
 
     def _loesche_artikel(self):
-        """
-        Slot for the "Delete" button in the action column.
-
-        Shows a confirmation dialog first.  If the user confirms, the article is
-        deleted.  Articles that are referenced in orders cannot be deleted – in
-        that case an error message is shown.
-        """
-        # Determine the button and the associated article ID.
         btn = self.sender()
         a = db.get_artikel(btn.property("art_id"))
         if not a:
-            return  # Article no longer exists – nothing to do.
+            return
 
-        # Show a confirmation dialog; the default answer is "No" for safety.
         reply = QMessageBox.question(
             self, "Artikel löschen",
             f"Soll <b>{a['bezeichnung']}</b> gelöscht werden?<br>"
             "<small style='color:gray'>Artikel in Bestellungen können nicht gelöscht werden.</small>",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No   # Safe default: No.
+            QMessageBox.StandardButton.No
         )
-
         if reply == QMessageBox.StandardButton.Yes:
-            # Attempt to delete; returns True if successful.
             ok = db.loesche_artikel(btn.property("art_id"))
             if ok:
-                # Refresh the table and notify other widgets.
                 self.refresh()
                 self.artikel_geaendert.emit()
             else:
-                # Article is referenced in orders and cannot be deleted.
                 QMessageBox.warning(self, "Nicht möglich",
                     "Dieser Artikel ist in Bestellungen vorhanden und kann nicht gelöscht werden.")
 
+    # ──────────────────────────────────────────────────────────────────────────
+    # CSV export
+    # ──────────────────────────────────────────────────────────────────────────
+
     def _exportiere_csv(self):
-        """
-        Export all currently displayed articles as a CSV file.
-
-        The current search text and the selected category filter are taken into
-        account – only the articles currently visible in the table are exported.
-
-        The file is saved with a semicolon delimiter and UTF-8 BOM encoding so
-        that Excel displays umlauts correctly.
-        """
-        # Open the file save dialog.
         pfad, _ = QFileDialog.getSaveFileName(
-            self,
-            "Artikel exportieren",
-            "artikel_export.csv",
-            "CSV-Dateien (*.csv)"
+            self, "Artikel exportieren", "artikel_export.csv", "CSV-Dateien (*.csv)"
         )
         if not pfad:
-            return  # Cancel pressed – do nothing.
+            return
 
-        # Read the current search text and load articles from the database.
         suche = self.search_edit.text().strip()
         artikel = db.get_alle_artikel(suche)
 
-        # Apply the category filter (same logic as in refresh()).
         kat_filter = self.filter_combo.currentData()
         if kat_filter:
             kat_name = self.filter_combo.currentText()
-            # List comprehension: keep only articles in the selected category.
             artikel = [a for a in artikel if a.get("kategorie") == kat_name]
 
         try:
             with open(pfad, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f, delimiter=";")
-
-                # Write the header row.
                 writer.writerow([
                     "Artikelnummer", "Bezeichnung", "Kategorie", "Hersteller",
                     "Lieferant", "EK (€)", "VK Netto (€)", "VK Brutto (€)",
                     "MwSt. (%)", "Lagerbestand", "Mindestbestand", "Einheit", "Status"
                 ])
-
-                # Write one row per article.
                 for a in artikel:
-                    # Calculate the gross price: net × (1 + VAT/100).
                     vk_brutto = a.get("verkaufspreis", 0) * (1 + a.get("mwst_satz", 19) / 100)
-
-                    # Determine the status as readable text.
                     if not a.get("aktiv", 1):
                         status = "Inaktiv"
                     elif a.get("nachbestellen"):
                         status = "Nachbestellen"
                     else:
                         status = "Verfügbar"
-
                     writer.writerow([
                         a.get("artikelnummer", ""),
                         a.get("bezeichnung", ""),
                         a.get("kategorie") or "",
                         a.get("hersteller") or "",
                         a.get("lieferant") or "",
-                        # :.2f formats to exactly 2 decimal places.
                         f"{a.get('einkaufspreis', 0):.2f}",
                         f"{a.get('verkaufspreis', 0):.2f}",
                         f"{vk_brutto:.2f}",
@@ -500,13 +441,9 @@ class ArtikelWidget(QWidget):
                         a.get("einheit", ""),
                         status,
                     ])
-
-            # Show a success message.
             QMessageBox.information(
                 self, "Export erfolgreich",
                 f"{len(artikel)} Artikel wurden exportiert nach:\n{pfad}"
             )
-
         except Exception as fehler:
-            # Show an error message if writing fails (e.g. missing permissions).
             QMessageBox.warning(self, "Fehler beim Export", str(fehler))

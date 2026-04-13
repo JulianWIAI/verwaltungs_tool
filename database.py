@@ -62,19 +62,22 @@ def init_db():
     Initialisiert die Datenbank beim ersten Programmstart.
 
     Liest die SQL-Schema-Datei (schema.sql) ein und führt sie aus.
-    Die Schema-Datei enthält CREATE TABLE IF NOT EXISTS Anweisungen,
-    d. h. sie legt Tabellen nur an, wenn sie noch nicht existieren –
-    bestehende Daten werden also nicht überschrieben.
-
-    Diese Funktion wird typischerweise einmalig beim Programmstart aufgerufen.
+    Führt anschließend Migrationen durch (z. B. neue Spalten hinzufügen),
+    damit bestehende Datenbanken automatisch aktualisiert werden.
     """
     conn = get_connection()
-    # Schema-Datei im UTF-8-Format öffnen und den Inhalt lesen
     with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
-        # executescript() führt mehrere SQL-Anweisungen auf einmal aus
         conn.executescript(f.read())
-    conn.commit()   # Änderungen dauerhaft in die Datei schreiben
-    conn.close()    # Verbindung freigeben (wichtig: sonst bleibt die Datei gesperrt)
+    conn.commit()
+
+    # Migration: passwort-Spalte hinzufügen (wird übersprungen wenn bereits vorhanden)
+    try:
+        conn.execute("ALTER TABLE kunden ADD COLUMN passwort TEXT DEFAULT 'student'")
+        conn.commit()
+    except Exception:
+        pass  # Spalte existiert bereits
+
+    conn.close()
 
 
 # ─────────────────────────────────────────────
@@ -202,36 +205,86 @@ def speichere_kunde(daten: dict) -> int:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if daten.get("id"):
         # ── UPDATE: bestehender Kunde ──
-        # Alle Felder außer kundennummer und erstellt_am werden überschrieben.
-        # geaendert_am wird auf den aktuellen Zeitstempel gesetzt.
-        conn.execute("""
-            UPDATE kunden SET vorname=?, nachname=?, email=?, telefon=?,
-            strasse=?, plz=?, ort=?, land=?, geburtsdatum=?, notizen=?, geaendert_am=?
-            WHERE id=?
-        """, (daten["vorname"], daten["nachname"], daten.get("email",""),
-              daten.get("telefon",""), daten.get("strasse",""), daten.get("plz",""),
-              daten.get("ort",""), daten.get("land","Deutschland"),
-              daten.get("geburtsdatum",""), daten.get("notizen",""),
-              now, daten["id"]))
+        if daten.get("passwort"):
+            # Passwort mit aktualisieren wenn angegeben
+            conn.execute("""
+                UPDATE kunden SET vorname=?, nachname=?, email=?, telefon=?,
+                strasse=?, plz=?, ort=?, land=?, geburtsdatum=?, notizen=?,
+                passwort=?, geaendert_am=?
+                WHERE id=?
+            """, (daten["vorname"], daten["nachname"], daten.get("email",""),
+                  daten.get("telefon",""), daten.get("strasse",""), daten.get("plz",""),
+                  daten.get("ort",""), daten.get("land","Deutschland"),
+                  daten.get("geburtsdatum",""), daten.get("notizen",""),
+                  daten["passwort"], now, daten["id"]))
+        else:
+            conn.execute("""
+                UPDATE kunden SET vorname=?, nachname=?, email=?, telefon=?,
+                strasse=?, plz=?, ort=?, land=?, geburtsdatum=?, notizen=?, geaendert_am=?
+                WHERE id=?
+            """, (daten["vorname"], daten["nachname"], daten.get("email",""),
+                  daten.get("telefon",""), daten.get("strasse",""), daten.get("plz",""),
+                  daten.get("ort",""), daten.get("land","Deutschland"),
+                  daten.get("geburtsdatum",""), daten.get("notizen",""),
+                  now, daten["id"]))
         conn.commit(); conn.close()
-        return daten["id"]  # Vorhandene ID zurückgeben
+        return daten["id"]
     else:
         # ── INSERT: neuer Kunde ──
-        # Neue eindeutige Kundennummer generieren (z. B. "K-00007")
         kundennummer = _next_nummer("K", "kunden", "kundennummer")
-        # Datensatz einfügen; fehlende Felder erhalten leere Strings als Standard
+        passwort = daten.get("passwort", "student")
         cur = conn.execute("""
             INSERT INTO kunden (kundennummer, vorname, nachname, email, telefon,
-            strasse, plz, ort, land, geburtsdatum, notizen)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            strasse, plz, ort, land, geburtsdatum, notizen, passwort)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
         """, (kundennummer, daten["vorname"], daten["nachname"], daten.get("email",""),
               daten.get("telefon",""), daten.get("strasse",""), daten.get("plz",""),
               daten.get("ort",""), daten.get("land","Deutschland"),
-              daten.get("geburtsdatum",""), daten.get("notizen","")))
+              daten.get("geburtsdatum",""), daten.get("notizen",""), passwort))
         conn.commit()
         new_id = cur.lastrowid  # lastrowid: die automatisch vergebene ID des neuen Datensatzes
         conn.close()
         return new_id
+
+
+def login_kunde(email: str, passwort: str) -> dict | None:
+    """Prüft E-Mail + Passwort und gibt den Kunden zurück, oder None bei Fehler."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT * FROM kunden WHERE email = ? AND passwort = ?", (email, passwort)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_kunde_by_email(email: str) -> dict | None:
+    """Lädt einen Kunden anhand seiner E-Mail-Adresse."""
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM kunden WHERE email = ?", (email,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_kunden_bestellungen(kunde_id: int) -> list:
+    """Gibt alle Bestellungen eines Kunden zurück, neueste zuerst."""
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT b.id, b.bestellnummer, b.bestelldatum, b.status, b.zahlungsstatus,
+               b.zahlungsart, b.versandkosten, b.rabatt_prozent,
+               ROUND(
+                   COALESCE(SUM(p.menge * p.einzelpreis * (1 - p.rabatt_prozent/100.0)
+                   * (1 + p.mwst_satz/100.0)), 0)
+                   * (1 - b.rabatt_prozent/100.0) + b.versandkosten, 2
+               ) AS gesamtbetrag_brutto,
+               COUNT(p.id) AS anzahl_positionen
+        FROM bestellungen b
+        LEFT JOIN bestellpositionen p ON p.bestellung_id = b.id
+        WHERE b.kunden_id = ?
+        GROUP BY b.id
+        ORDER BY b.bestelldatum DESC
+    """, (kunde_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 def loesche_kunde(kunde_id: int) -> bool:
