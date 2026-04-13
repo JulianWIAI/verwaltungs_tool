@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radsport Koch GmbH – Online-Bestellung</title>
+    <style>
+        :root {
+            --primary:       #1d4ed8;
+            --primary-dark:  #1e3a8a;
+            --primary-light: #dbeafe;
+            --success:       #16a34a;
+            --success-light: #dcfce7;
+            --error:         #dc2626;
+            --error-light:   #fee2e2;
+            --warning-light: #fef3c7;
+            --gray-50:  #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --white:    #ffffff;
+            --radius:    8px;
+            --radius-lg: 12px;
+            --shadow:    0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
+            --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color: white;
+            padding: 1.25rem 2rem;
+            box-shadow: var(--shadow-md);
+        }
+        .header-inner {
+            max-width: 980px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .header-logo { font-size: 2.2rem; }
+        .header h1  { font-size: 1.4rem; font-weight: 700; }
+        .header p   { font-size: 0.82rem; opacity: .85; }
+
+        /* ── Container ── */
+        .container { max-width: 980px; margin: 0 auto; padding: 1.75rem 1rem; }
+
+        /* ── Progress bar ── */
+        .progress {
+            display: flex;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            margin-bottom: 1.75rem;
+        }
+        .step { display: flex; align-items: center; gap: .5rem; }
+        .step-circle {
+            width: 34px; height: 34px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: .85rem; flex-shrink: 0;
+            background: var(--gray-200); color: var(--gray-500);
+            transition: all .25s;
+        }
+        .step.active .step-circle { background: var(--primary); color: white; box-shadow: 0 0 0 4px var(--primary-light); }
+        .step.done   .step-circle { background: var(--success);  color: white; }
+        .step-label  { font-size: .78rem; color: var(--gray-500); font-weight: 500; }
+        .step.active .step-label  { color: var(--primary); font-weight: 600; }
+        .step.done   .step-label  { color: var(--success); }
+        .step-line   { flex: 1; height: 2px; background: var(--gray-200); margin: 0 .5rem; transition: background .25s; }
+        .step-line.done { background: var(--success); }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .card-title {
+            font-size: 1.05rem; font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 1.1rem;
+            padding-bottom: .75rem;
+            border-bottom: 2px solid var(--gray-100);
+            display: flex; align-items: center; gap: .5rem;
+        }
+
+        /* ── Tabs ── */
+        .tabs {
+            display: flex; border-radius: var(--radius);
+            overflow: hidden; border: 1.5px solid var(--gray-200);
+            margin-bottom: 1.25rem;
+        }
+        .tab-btn {
+            flex: 1; padding: .65rem 1rem;
+            border: none; cursor: pointer; font-size: .88rem; font-weight: 600;
+            transition: all .18s; background: var(--gray-50); color: var(--gray-600);
+            font-family: inherit;
+        }
+        .tab-btn.active   { background: var(--primary); color: white; }
+        .tab-btn:hover:not(.active) { background: var(--gray-100); }
+
+        /* ── Form ── */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .form-group { display: flex; flex-direction: column; gap: .3rem; }
+        .form-group.full { grid-column: 1 / -1; }
+
+        label {
+            font-size: .75rem; font-weight: 700;
+            color: var(--gray-600);
+            text-transform: uppercase; letter-spacing: .05em;
+        }
+        label .req { color: var(--error); margin-left: 2px; }
+
+        input, select, textarea {
+            padding: .58rem .875rem;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-size: .9rem; color: var(--gray-800);
+            background: var(--white); font-family: inherit;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(29,78,216,.12);
+        }
+        input.err, select.err { border-color: var(--error); }
+
+        .ferr { font-size: .73rem; color: var(--error); display: none; }
+        .ferr.on { display: block; }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: .6rem 1.4rem; border: none; border-radius: var(--radius);
+            font-size: .9rem; font-weight: 600; cursor: pointer;
+            transition: all .18s; display: inline-flex; align-items: center;
+            gap: .45rem; font-family: inherit; text-decoration: none;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-secondary { background: var(--gray-100); color: var(--gray-700); }
+        .btn-secondary:hover { background: var(--gray-200); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #15803d; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+        .btn-outline:hover { background: var(--primary-light); }
+        .btn-sm { padding: .32rem .7rem; font-size: .78rem; }
+        .btn:disabled { opacity: .6; cursor: not-allowed; transform: none !important; }
+
+        .nav-btns { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1.25rem; }
+
+        /* ── Search ── */
+        .search-wrap { position: relative; margin-bottom: 1rem; }
+        .search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--gray-400); pointer-events: none; }
+        .search-input { width: 100%; padding-left: 2.3rem; }
+
+        .search-results {
+            border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+            overflow: hidden; max-height: 280px; overflow-y: auto;
+        }
+        .sr-item {
+            padding: .7rem 1rem; border-bottom: 1px solid var(--gray-100);
+            cursor: pointer; display: flex; justify-content: space-between;
+            align-items: center; transition: background .12s;
+        }
+        .sr-item:last-child { border-bottom: none; }
+        .sr-item:hover     { background: var(--primary-light); }
+
+        /* ── Article list + Cart layout ── */
+        .artikel-layout { display: grid; grid-template-columns: 1fr 310px; gap: 1.5rem; align-items: start; }
+        @media (max-width: 680px) { .artikel-layout { grid-template-columns: 1fr; } }
+
+        .artikel-list { display: flex; flex-direction: column; gap: .45rem; max-height: 460px; overflow-y: auto; padding-right: .2rem; }
+
+        .art-item {
+            display: flex; align-items: center; gap: .9rem;
+            padding: .7rem 1rem;
+            border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+            background: var(--white); transition: all .18s;
+        }
+        .art-item:hover   { border-color: var(--primary); box-shadow: var(--shadow); }
+        .art-item.in-cart { border-color: var(--success); background: var(--success-light); }
+        .art-info { flex: 1; min-width: 0; }
+        .art-name { font-weight: 600; font-size: .88rem; }
+        .art-sub  { font-size: .72rem; color: var(--gray-400); }
+        .art-price { font-weight: 700; color: var(--primary); font-size: .92rem; white-space: nowrap; }
+
+        /* ── Cart ── */
+        .cart {
+            background: var(--gray-50);
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            position: sticky; top: 1rem;
+        }
+        .cart-title { font-weight: 700; font-size: .92rem; margin-bottom: .9rem; color: var(--gray-700); display: flex; align-items: center; gap: .45rem; }
+        .cart-badge { background: var(--primary); color: white; font-size: .68rem; padding: .1rem .38rem; border-radius: 999px; font-weight: 700; }
+
+        .cart-items { display: flex; flex-direction: column; gap: .4rem; max-height: 310px; overflow-y: auto; }
+        .cart-item  { display: flex; gap: .5rem; align-items: center; padding: .45rem; background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); }
+        .ci-info    { flex: 1; min-width: 0; }
+        .ci-name    { font-size: .78rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ci-price   { font-size: .72rem; color: var(--gray-500); }
+
+        .qty-ctrl { display: flex; align-items: center; gap: .2rem; }
+        .qty-btn  {
+            width: 22px; height: 22px; border: 1.5px solid var(--gray-300);
+            border-radius: 4px; background: var(--white); cursor: pointer;
+            font-size: .95rem; font-weight: 700; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--gray-700); transition: all .15s;
+        }
+        .qty-btn:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+        .qty-num { min-width: 26px; text-align: center; font-size: .83rem; font-weight: 700; }
+
+        .cart-total { margin-top: 1rem; padding-top: .7rem; border-top: 2px solid var(--gray-200); }
+        .ct-row { display: flex; justify-content: space-between; font-size: .83rem; color: var(--gray-600); margin-bottom: .2rem; }
+        .ct-row.main { font-weight: 700; font-size: .97rem; color: var(--gray-800); }
+        .cart-empty { text-align: center; color: var(--gray-400); font-size: .85rem; padding: 1.75rem 0; }
+
+        /* ── Order summary table ── */
+        .order-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+        .order-table th {
+            text-align: left; padding: .45rem .75rem;
+            background: var(--gray-50); font-size: .72rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .05em; color: var(--gray-500);
+            border-bottom: 2px solid var(--gray-200);
+        }
+        .order-table td { padding: .7rem .75rem; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+        .order-table tr:last-child td { border-bottom: none; }
+        .num { text-align: right; }
+
+        /* ── Totals ── */
+        .totals-box { margin-top: 1rem; padding: 1rem; background: var(--gray-50); border-radius: var(--radius); border: 1px solid var(--gray-200); }
+        .total-row { display: flex; justify-content: space-between; padding: .3rem 0; font-size: .875rem; color: var(--gray-600); }
+        .total-row.final { font-weight: 700; font-size: 1.05rem; color: var(--gray-900); border-top: 2px solid var(--gray-300); margin-top: .45rem; padding-top: .7rem; }
+
+        /* ── Alerts ── */
+        .alert { padding: .8rem 1rem; border-radius: var(--radius); font-size: .875rem; display: flex; align-items: flex-start; gap: .5rem; }
+        .alert-success { background: var(--success-light); color: #14532d; border: 1px solid #86efac; }
+        .alert-error   { background: var(--error-light);   color: #7f1d1d; border: 1px solid #fca5a5; }
+        .alert-warning { background: var(--warning-light); color: #78350f; border: 1px solid #fcd34d; }
+
+        /* ── Success screen ── */
+        .success-page { text-align: center; padding: 2.5rem 1rem; }
+        .success-icon  { font-size: 4.5rem; margin-bottom: 1rem; }
+        .success-title { font-size: 1.65rem; font-weight: 700; color: var(--success); margin-bottom: .4rem; }
+        .success-sub   { color: var(--gray-500); margin-bottom: 1.75rem; }
+        .order-badge   { display: inline-block; background: var(--primary-light); color: var(--primary-dark); padding: .5rem 1.5rem; border-radius: 999px; font-weight: 700; font-size: 1.1rem; margin-bottom: 2rem; }
+
+        /* ── Spinner ── */
+        .spinner {
+            display: inline-block; width: 15px; height: 15px;
+            border: 2px solid rgba(255,255,255,.35); border-top-color: white;
+            border-radius: 50%; animation: spin .65s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Summary grid ── */
+        .sum-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .6rem; }
+        .sum-field { display: flex; flex-direction: column; }
+        .sum-label { font-size: .73rem; color: var(--gray-500); }
+        .sum-value { font-weight: 600; color: var(--gray-800); }
+
+        /* ── Badge ── */
+        .badge { display: inline-block; padding: .18rem .5rem; border-radius: 999px; font-size: .7rem; font-weight: 700; }
+        .badge-blue { background: var(--primary-light); color: var(--primary); }
+
+        /* ── Utilities ── */
+        .hidden { display: none !important; }
+        .mt-1 { margin-top: .5rem; }
+        .mt-2 { margin-top: 1rem; }
+        .hint { color: var(--gray-400); font-size: .78rem; }
+
+        /* ── Print ── */
+        @media print {
+            .header { background: #1d4ed8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            .card { box-shadow: none; border: 1px solid #e2e8f0; }
+            body { background: white; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<div class="header">
+    <div class="header-inner">
+        <div class="header-logo">&#x1F6B4;</div>
+        <div>
+            <h1>Radsport Koch GmbH</h1>
+            <p>Online-Bestellformular &ndash; Neuen Auftrag erfassen</p>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- ══ FORTSCHRITTSANZEIGE ══ -->
+    <div class="progress no-print" id="progress">
+        <div class="step active" id="si1">
+            <div class="step-circle">1</div>
+            <div class="step-label">Kundendaten</div>
+        </div>
+        <div class="step-line" id="l1"></div>
+        <div class="step" id="si2">
+            <div class="step-circle">2</div>
+            <div class="step-label">Artikel w&auml;hlen</div>
+        </div>
+        <div class="step-line" id="l2"></div>
+        <div class="step" id="si3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Best&auml;tigen</div>
+        </div>
+        <div class="step-line" id="l3"></div>
+        <div class="step" id="si4">
+            <div class="step-circle">&#10003;</div>
+            <div class="step-label">Fertig</div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SCHRITT 1 – Kundendaten                        -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div id="page-1">
+        <div class="card">
+            <div class="card-title">&#128100; Kundendaten</div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('neu')">Neuer Kunde</button>
+                <button class="tab-btn"        onclick="switchTab('alt')">Bestehender Kunde</button>
+            </div>
+
+            <!-- Neuer Kunde -->
+            <div id="tab-neu">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Vorname <span class="req">*</span></label>
+                        <input type="text" id="vorname" placeholder="Max" autocomplete="given-name">
+                        <span class="ferr" id="ferr-vorname">Vorname ist erforderlich.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Nachname <span class="req">*</span></label>
+                        <input type="text" id="nachname" placeholder="Mustermann" autocomplete="family-name">
+                        <span class="ferr" id="ferr-nachname">Nachname ist erforderlich.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>E-Mail <span class="req">*</span></label>
+                        <input type="email" id="email" placeholder="max@example.de" autocomplete="email">
+                        <span class="ferr" id="ferr-email">Bitte g&uuml;ltige E-Mail-Adresse eingeben.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefon</label>
+                        <input type="tel" id="telefon" placeholder="0171 1234567" autocomplete="tel">
+                    </div>
+                    <div class="form-group full">
+                        <label>Stra&szlig;e &amp; Hausnummer <span class="req">*</span></label>
+                        <input type="text" id="strasse" placeholder="Musterstra&szlig;e 42" autocomplete="street-address">
+                        <span class="ferr" id="ferr-strasse">Stra&szlig;e ist erforderlich.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>PLZ <span class="req">*</span></label>
+                        <input type="text" id="plz" placeholder="12345" maxlength="5" autocomplete="postal-code">
+                        <span class="ferr" id="ferr-plz">5-stellige PLZ erforderlich.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Ort <span class="req">*</span></label>
+                        <input type="text" id="ort" placeholder="Musterstadt" autocomplete="address-level2">
+                        <span class="ferr" id="ferr-ort">Ort ist erforderlich.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Land</label>
+                        <select id="land" autocomplete="country">
+                            <option value="Deutschland" selected>Deutschland</option>
+                            <option value="&Ouml;sterreich">&Ouml;sterreich</option>
+                            <option value="Schweiz">Schweiz</option>
+                            <option value="Andere">Andere</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Geburtsdatum</label>
+                        <input type="date" id="geburtsdatum" autocomplete="bday">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bestehender Kunde -->
+            <div id="tab-alt" class="hidden">
+                <div class="search-wrap">
+                    <span class="search-icon">&#128269;</span>
+                    <input type="text" class="search-input" id="k-search"
+                           placeholder="Name, Kundennummer oder E-Mail ..."
+                           oninput="searchKunden(this.value)">
+                </div>
+                <div id="k-results" class="search-results hidden"></div>
+                <div id="k-selected" class="hidden mt-2">
+                    <div class="alert alert-success">
+                        <span>&#10003;</span>
+                        <div>
+                            <strong id="ksel-name"></strong> ausgew&auml;hlt &nbsp;
+                            <span id="ksel-detail" style="color:#166534; font-size:.82rem;"></span>
+                        </div>
+                    </div>
+                </div>
+                <p class="hint mt-1">Mindestens 2 Zeichen eingeben, um zu suchen.</p>
+            </div>
+        </div>
+
+        <div class="nav-btns">
+            <div></div>
+            <button class="btn btn-primary" id="btn-next1" onclick="step1Next()">
+                Weiter: Artikel w&auml;hlen &rarr;
+            </button>
+        </div>
+    </div><!-- /page-1 -->
+
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SCHRITT 2 – Artikel auswählen                  -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div id="page-2" class="hidden">
+        <div class="card">
+            <div class="card-title">&#128722; Artikel ausw&auml;hlen</div>
+
+            <div class="artikel-layout">
+                <!-- Left: article catalogue -->
+                <div>
+                    <div class="search-wrap">
+                        <span class="search-icon">&#128269;</span>
+                        <input type="text" class="search-input" id="art-search"
+                               placeholder="Artikel suchen ..."
+                               oninput="filterArtikel(this.value)">
+                    </div>
+                    <div class="artikel-list" id="art-list">
+                        <div class="cart-empty">Artikel werden geladen ...</div>
+                    </div>
+                </div>
+
+                <!-- Right: cart -->
+                <div>
+                    <div class="cart">
+                        <div class="cart-title">
+                            &#128722; Warenkorb
+                            <span class="cart-badge" id="cart-cnt">0</span>
+                        </div>
+                        <div class="cart-items" id="cart-items"></div>
+                        <div id="cart-empty-msg" class="cart-empty">Noch keine Artikel hinzugef&uuml;gt</div>
+                        <div class="cart-total">
+                            <div class="ct-row"><span>Netto</span><span id="c-netto">0,00 &euro;</span></div>
+                            <div class="ct-row"><span>MwSt. (19&nbsp;%)</span><span id="c-mwst">0,00 &euro;</span></div>
+                            <div class="ct-row main"><span>Gesamt</span><span id="c-gesamt">0,00 &euro;</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-btns">
+            <button class="btn btn-secondary" onclick="goTo(1)">&larr; Zur&uuml;ck</button>
+            <button class="btn btn-primary" onclick="step2Next()">Weiter: &Uuml;bersicht &rarr;</button>
+        </div>
+    </div><!-- /page-2 -->
+
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SCHRITT 3 – Bestellübersicht & Bestätigung     -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div id="page-3" class="hidden">
+
+        <!-- Kundendaten-Zusammenfassung -->
+        <div class="card">
+            <div class="card-title">&#128100; Kundendaten</div>
+            <div id="sum-kunde"></div>
+        </div>
+
+        <!-- Positionen -->
+        <div class="card">
+            <div class="card-title">&#128230; Bestellpositionen</div>
+            <table class="order-table">
+                <thead>
+                    <tr>
+                        <th>Pos.</th>
+                        <th>Artikel</th>
+                        <th class="num">Menge</th>
+                        <th class="num">Einzelpreis</th>
+                        <th class="num">Gesamt</th>
+                    </tr>
+                </thead>
+                <tbody id="sum-pos"></tbody>
+            </table>
+            <div class="totals-box" id="sum-totals"></div>
+        </div>
+
+        <!-- Bestelloptionen -->
+        <div class="card">
+            <div class="card-title">&#9881; Bestelloptionen</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Zahlungsart <span class="req">*</span></label>
+                    <select id="zahlungsart">
+                        <option value="Rechnung">Rechnung</option>
+                        <option value="&Uuml;berweisung">&Uuml;berweisung</option>
+                        <option value="Bar">Bar</option>
+                        <option value="EC-Karte">EC-Karte</option>
+                        <option value="Kreditkarte">Kreditkarte</option>
+                        <option value="PayPal">PayPal</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Gew&uuml;nschtes Lieferdatum</label>
+                    <input type="date" id="lieferdatum" min="">
+                </div>
+                <div class="form-group">
+                    <label>Versandkosten (&euro;)</label>
+                    <input type="number" id="versandkosten" value="0" min="0" step="0.01"
+                           oninput="updateSummaryTotals()">
+                </div>
+                <div class="form-group">
+                    <label>Rabatt (%)</label>
+                    <input type="number" id="rabatt" value="0" min="0" max="100" step="0.1"
+                           oninput="updateSummaryTotals()">
+                </div>
+                <div class="form-group full">
+                    <label>Anmerkungen / Notizen</label>
+                    <textarea id="notizen" rows="3"
+                              placeholder="Besondere W&uuml;nsche, Lieferhinweise ..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div id="submit-err" class="alert alert-error hidden mt-1">
+            <span>&#9888;</span> <span id="submit-err-txt"></span>
+        </div>
+
+        <div class="nav-btns">
+            <button class="btn btn-secondary" onclick="goTo(2)">&larr; Zur&uuml;ck</button>
+            <button class="btn btn-success" id="btn-submit" onclick="submitBestellung()">
+                &#10003; Bestellung aufgeben
+            </button>
+        </div>
+    </div><!-- /page-3 -->
+
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SCHRITT 4 – Bestätigung                        -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div id="page-4" class="hidden">
+        <div class="card">
+            <div class="success-page">
+                <div class="success-icon">&#127881;</div>
+                <h2 class="success-title">Bestellung erfolgreich aufgegeben!</h2>
+                <p class="success-sub">Vielen Dank! Wir bearbeiten Ihren Auftrag schnellstm&ouml;glich.</p>
+                <div class="order-badge" id="conf-nr">B-00000</div>
+            </div>
+
+            <div id="conf-details"></div>
+
+            <div class="nav-btns no-print" style="margin-top:1.5rem;">
+                <button class="btn btn-outline" onclick="window.print()">&#128424; Drucken / PDF</button>
+                <button class="btn btn-primary" onclick="neueBestellung()">+ Neue Bestellung</button>
+            </div>
+        </div>
+    </div><!-- /page-4 -->
+
+</div><!-- /container -->
+
+<!-- ════════════════════ JAVASCRIPT ════════════════════ -->
+<script>
+'use strict';
+
+/* ── State ── */
+const S = {
+    step:     1,
+    kundeTyp: 'neu',       // 'neu' | 'alt'
+    kunde:    null,        // selected/created customer object
+    artikel:  [],          // loaded from API
+    cart:     [],          // [{art, menge}]
+};
+
+/* ── Bootstrap ── */
+document.addEventListener('DOMContentLoaded', () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    document.getElementById('lieferdatum').min = d.toISOString().split('T')[0];
+    loadArtikel();
+});
+
+/* ──────────────────────────────────────────
+   NAVIGATION
+────────────────────────────────────────── */
+function goTo(n) {
+    [1,2,3,4].forEach(i => {
+        document.getElementById('page-'+i).classList.toggle('hidden', i !== n);
+    });
+    // Progress indicators
+    ['si1','si2','si3','si4'].forEach((id, idx) => {
+        const el = document.getElementById(id);
+        el.className = 'step';
+        if (idx + 1 <  n) el.classList.add('done');
+        if (idx + 1 === n) el.classList.add('active');
+    });
+    ['l1','l2','l3'].forEach((id, idx) => {
+        const el = document.getElementById(id);
+        el.className = 'step-line';
+        if (idx + 1 < n) el.classList.add('done');
+    });
+    S.step = n;
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+/* ──────────────────────────────────────────
+   SCHRITT 1 – Kundendaten
+────────────────────────────────────────── */
+function switchTab(type) {
+    S.kundeTyp = type;
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        b.classList.toggle('active', (i === 0 && type === 'neu') || (i === 1 && type === 'alt'));
+    });
+    document.getElementById('tab-neu').classList.toggle('hidden', type !== 'neu');
+    document.getElementById('tab-alt').classList.toggle('hidden', type !== 'alt');
+}
+
+/* Validation helper */
+function vf(id, ok, errId) {
+    const el  = document.getElementById(id);
+    const err = document.getElementById(errId);
+    if (!ok) { el.classList.add('err'); err.classList.add('on'); return false; }
+    el.classList.remove('err'); err.classList.remove('on'); return true;
+}
+function clearErrs() {
+    document.querySelectorAll('.err').forEach(e => e.classList.remove('err'));
+    document.querySelectorAll('.ferr.on').forEach(e => e.classList.remove('on'));
+}
+
+function validateNewKunde() {
+    clearErrs();
+    const v  = id => document.getElementById(id).value.trim();
+    let ok = true;
+    if (!vf('vorname', v('vorname').length > 0, 'ferr-vorname')) ok = false;
+    if (!vf('nachname', v('nachname').length > 0, 'ferr-nachname')) ok = false;
+    if (!vf('email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('email')), 'ferr-email')) ok = false;
+    if (!vf('strasse', v('strasse').length > 0, 'ferr-strasse')) ok = false;
+    if (!vf('plz', /^\d{5}$/.test(v('plz')), 'ferr-plz')) ok = false;
+    if (!vf('ort', v('ort').length > 0, 'ferr-ort')) ok = false;
+    return ok;
+}
+
+async function step1Next() {
+    if (S.kundeTyp === 'neu') {
+        if (!validateNewKunde()) return;
+
+        const btn = document.getElementById('btn-next1');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Speichern ...';
+
+        const payload = {
+            vorname:      g('vorname'),
+            nachname:     g('nachname'),
+            email:        g('email'),
+            telefon:      g('telefon'),
+            strasse:      g('strasse'),
+            plz:          g('plz'),
+            ort:          g('ort'),
+            land:         document.getElementById('land').value,
+            geburtsdatum: document.getElementById('geburtsdatum').value,
+        };
+
+        try {
+            const res  = await fetch('/api/kunden', {
+                method:  'POST',
+                headers: {'Content-Type': 'application/json'},
+                body:    JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (data.success) {
+                S.kunde = data.kunde;
+                goTo(2);
+            } else {
+                alert('Fehler beim Speichern:\n' + data.error);
+            }
+        } catch (e) {
+            alert('Verbindungsfehler: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Weiter: Artikel w&auml;hlen &rarr;';
+        }
+    } else {
+        if (!S.kunde) { alert('Bitte w\u00e4hlen Sie einen Kunden aus.'); return; }
+        goTo(2);
+    }
+}
+
+/* Customer search */
+let ksTimer = null;
+function searchKunden(q) {
+    clearTimeout(ksTimer);
+    const box = document.getElementById('k-results');
+    if (q.length < 2) { box.classList.add('hidden'); return; }
+    ksTimer = setTimeout(async () => {
+        try {
+            const res   = await fetch('/api/kunden/suche?q=' + encodeURIComponent(q));
+            const liste = await res.json();
+            renderKundenResults(liste);
+        } catch {}
+    }, 300);
+}
+
+function renderKundenResults(liste) {
+    const box = document.getElementById('k-results');
+    if (liste.length === 0) {
+        box.innerHTML = '<div style="padding:1rem;color:var(--gray-400);text-align:center;">Keine Kunden gefunden</div>';
+    } else {
+        box.innerHTML = liste.map(k => `
+            <div class="sr-item" onclick="selectKunde(${k.id})">
+                <div>
+                    <strong>${k.vorname} ${k.nachname}</strong><br>
+                    <small style="color:var(--gray-400)">${k.kundennummer} &middot; ${k.email || ''} &middot; ${k.ort || ''}</small>
+                </div>
+                <span class="badge badge-blue">${k.kundennummer}</span>
+            </div>
+        `).join('');
+    }
+    box.classList.remove('hidden');
+}
+
+async function selectKunde(id) {
+    const res   = await fetch('/api/kunden/' + id);
+    const kunde = await res.json();
+    S.kunde = kunde;
+
+    document.getElementById('k-results').classList.add('hidden');
+    document.getElementById('k-search').value = kunde.vorname + ' ' + kunde.nachname;
+
+    document.getElementById('ksel-name').textContent   = kunde.vorname + ' ' + kunde.nachname;
+    document.getElementById('ksel-detail').textContent =
+        kunde.kundennummer + ' \u00b7 ' + (kunde.email || 'keine E-Mail') +
+        ' \u00b7 ' + (kunde.strasse || '') + ', ' + (kunde.plz || '') + ' ' + (kunde.ort || '');
+    document.getElementById('k-selected').classList.remove('hidden');
+}
+
+/* ──────────────────────────────────────────
+   SCHRITT 2 – Artikel
+────────────────────────────────────────── */
+async function loadArtikel() {
+    try {
+        const res   = await fetch('/api/artikel');
+        S.artikel   = await res.json();
+        renderArtikel(S.artikel);
+    } catch {
+        document.getElementById('art-list').innerHTML =
+            '<div class="alert alert-error">Artikel konnten nicht geladen werden.</div>';
+    }
+}
+
+function filterArtikel(q) {
+    const ql = q.toLowerCase();
+    renderArtikel(S.artikel.filter(a =>
+        a.bezeichnung.toLowerCase().includes(ql) ||
+        a.artikelnummer.toLowerCase().includes(ql)
+    ));
+}
+
+function renderArtikel(liste) {
+    const box = document.getElementById('art-list');
+    if (liste.length === 0) {
+        box.innerHTML = '<div class="cart-empty">Keine Artikel gefunden.</div>';
+        return;
+    }
+    box.innerHTML = liste.map(a => {
+        const inCart = S.cart.some(c => c.art.id === a.id);
+        return `
+            <div class="art-item ${inCart ? 'in-cart' : ''}" onclick="addToCart(${a.id})">
+                <div class="art-info">
+                    <div class="art-name">${a.bezeichnung}</div>
+                    <div class="art-sub">${a.artikelnummer} &middot; ${a.einheit || 'St\u00fcck'}</div>
+                </div>
+                <div class="art-price">${fmt(a.verkaufspreis)}</div>
+                <button class="btn btn-sm ${inCart ? 'btn-secondary' : 'btn-primary'}"
+                        onclick="event.stopPropagation(); addToCart(${a.id})">
+                    ${inCart ? '&#10003; Im Warenkorb' : '+ Hinzuf\u00fcgen'}
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function addToCart(artId) {
+    const art = S.artikel.find(a => a.id === artId);
+    if (!art) return;
+    const ex = S.cart.find(c => c.art.id === artId);
+    if (ex) { ex.menge++; } else { S.cart.push({art, menge: 1}); }
+    renderCart();
+    filterArtikel(document.getElementById('art-search').value);
+}
+
+function changeQty(artId, delta) {
+    const item = S.cart.find(c => c.art.id === artId);
+    if (!item) return;
+    item.menge += delta;
+    if (item.menge <= 0) S.cart = S.cart.filter(c => c.art.id !== artId);
+    renderCart();
+    filterArtikel(document.getElementById('art-search').value);
+}
+
+function renderCart() {
+    const box   = document.getElementById('cart-items');
+    const empty = document.getElementById('cart-empty-msg');
+    const cnt   = S.cart.reduce((s, c) => s + c.menge, 0);
+    document.getElementById('cart-cnt').textContent = cnt;
+
+    if (S.cart.length === 0) {
+        box.innerHTML = '';
+        empty.classList.remove('hidden');
+    } else {
+        empty.classList.add('hidden');
+        box.innerHTML = S.cart.map(item => `
+            <div class="cart-item">
+                <div class="ci-info">
+                    <div class="ci-name">${item.art.bezeichnung}</div>
+                    <div class="ci-price">${fmt(item.art.verkaufspreis)} / ${item.art.einheit || 'St\u00fcck'}</div>
+                </div>
+                <div class="qty-ctrl">
+                    <button class="qty-btn" onclick="changeQty(${item.art.id}, -1)">&minus;</button>
+                    <span class="qty-num">${item.menge}</span>
+                    <button class="qty-btn" onclick="changeQty(${item.art.id}, +1)">+</button>
+                </div>
+            </div>
+        `).join('');
+    }
+    updateCartTotals();
+}
+
+function cartTotals() {
+    // Prices are stored as brutto (incl. 19 % MwSt)
+    const brutto = S.cart.reduce((s, c) => s + c.art.verkaufspreis * c.menge, 0);
+    const netto  = brutto / 1.19;
+    const mwst   = brutto - netto;
+    return {netto, mwst, brutto};
+}
+
+function updateCartTotals() {
+    const {netto, mwst, brutto} = cartTotals();
+    document.getElementById('c-netto').textContent  = fmt(netto);
+    document.getElementById('c-mwst').textContent   = fmt(mwst);
+    document.getElementById('c-gesamt').textContent = fmt(brutto);
+}
+
+function step2Next() {
+    if (S.cart.length === 0) {
+        alert('Bitte mindestens einen Artikel in den Warenkorb legen.');
+        return;
+    }
+    buildSummary();
+    goTo(3);
+}
+
+/* ──────────────────────────────────────────
+   SCHRITT 3 – Übersicht
+────────────────────────────────────────── */
+function buildSummary() {
+    const k = S.kunde;
+    document.getElementById('sum-kunde').innerHTML = `
+        <div class="sum-grid">
+            <div class="sum-field"><span class="sum-label">Kundennummer</span><span class="sum-value">${k.kundennummer || '&mdash;'}</span></div>
+            <div class="sum-field"><span class="sum-label">Name</span><span class="sum-value">${k.vorname} ${k.nachname}</span></div>
+            <div class="sum-field"><span class="sum-label">E-Mail</span><span class="sum-value">${k.email || '&mdash;'}</span></div>
+            <div class="sum-field"><span class="sum-label">Telefon</span><span class="sum-value">${k.telefon || '&mdash;'}</span></div>
+            <div class="sum-field"><span class="sum-label">Adresse</span><span class="sum-value">${k.strasse || ''}, ${k.plz || ''} ${k.ort || ''}</span></div>
+            <div class="sum-field"><span class="sum-label">Land</span><span class="sum-value">${k.land || 'Deutschland'}</span></div>
+        </div>
+    `;
+
+    document.getElementById('sum-pos').innerHTML = S.cart.map((item, i) => `
+        <tr>
+            <td>${i+1}</td>
+            <td>
+                <strong>${item.art.bezeichnung}</strong><br>
+                <small style="color:var(--gray-400)">${item.art.artikelnummer}</small>
+            </td>
+            <td class="num">${item.menge}&nbsp;${item.art.einheit || 'St\u00fcck'}</td>
+            <td class="num">${fmt(item.art.verkaufspreis)}</td>
+            <td class="num">${fmt(item.art.verkaufspreis * item.menge)}</td>
+        </tr>
+    `).join('');
+
+    updateSummaryTotals();
+}
+
+function updateSummaryTotals() {
+    const versand   = parseFloat(document.getElementById('versandkosten')?.value || 0) || 0;
+    const rabattPct = parseFloat(document.getElementById('rabatt')?.value || 0) || 0;
+    const {netto, mwst, brutto} = cartTotals();
+    const rabattBetrag = brutto * (rabattPct / 100);
+    const bruttoNachR  = brutto - rabattBetrag;
+    const gesamt       = bruttoNachR + versand;
+    const gesamtNetto  = gesamt / 1.19;
+
+    document.getElementById('sum-totals').innerHTML = `
+        <div class="total-row"><span>Zwischensumme (brutto)</span><span>${fmt(brutto)}</span></div>
+        ${rabattPct > 0 ? `<div class="total-row" style="color:var(--success)"><span>Rabatt (${rabattPct}&nbsp;%)</span><span>&minus;&nbsp;${fmt(rabattBetrag)}</span></div>` : ''}
+        ${versand > 0   ? `<div class="total-row"><span>Versandkosten</span><span>${fmt(versand)}</span></div>` : ''}
+        <div class="total-row"><span>Nettobetrag</span><span>${fmt(gesamtNetto)}</span></div>
+        <div class="total-row"><span>MwSt. (19&nbsp;%)</span><span>${fmt(gesamt - gesamtNetto)}</span></div>
+        <div class="total-row final"><span>Gesamtbetrag (inkl. MwSt.)</span><span>${fmt(gesamt)}</span></div>
+    `;
+}
+
+/* ──────────────────────────────────────────
+   SUBMIT
+────────────────────────────────────────── */
+async function submitBestellung() {
+    const btn = document.getElementById('btn-submit');
+    const errBox = document.getElementById('submit-err');
+    errBox.classList.add('hidden');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Bestellung wird gesendet ...';
+
+    const versand   = parseFloat(document.getElementById('versandkosten').value || 0) || 0;
+    const rabattPct = parseFloat(document.getElementById('rabatt').value || 0) || 0;
+
+    const bestellungData = {
+        kunden_id:      S.kunde.id,
+        zahlungsart:    document.getElementById('zahlungsart').value,
+        lieferdatum:    document.getElementById('lieferdatum').value,
+        versandkosten:  versand,
+        rabatt_prozent: rabattPct,
+        notizen:        document.getElementById('notizen').value.trim(),
+        status:         'Neu',
+        zahlungsstatus: 'Offen',
+    };
+
+    const positionen = S.cart.map(item => ({
+        artikel_id:     item.art.id,
+        menge:          item.menge,
+        einzelpreis:    item.art.verkaufspreis,
+        mwst_satz:      item.art.mwst_satz || 19,
+        rabatt_prozent: 0,
+    }));
+
+    try {
+        const res  = await fetch('/api/bestellungen', {
+            method:  'POST',
+            headers: {'Content-Type': 'application/json'},
+            body:    JSON.stringify({bestellung: bestellungData, positionen}),
+        });
+        const data = await res.json();
+        if (data.success) {
+            showConfirmation(data);
+        } else {
+            document.getElementById('submit-err-txt').textContent = data.error;
+            errBox.classList.remove('hidden');
+        }
+    } catch (e) {
+        document.getElementById('submit-err-txt').textContent = 'Verbindungsfehler: ' + e.message;
+        errBox.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '&#10003; Bestellung aufgeben';
+    }
+}
+
+/* ──────────────────────────────────────────
+   SCHRITT 4 – Bestätigung
+────────────────────────────────────────── */
+function showConfirmation(data) {
+    const b   = data.bestellung;
+    const pos = data.positionen;
+    const k   = S.kunde;
+    const versand   = parseFloat(document.getElementById('versandkosten').value || 0) || 0;
+    const rabattPct = parseFloat(document.getElementById('rabatt').value || 0) || 0;
+    const {brutto}  = cartTotals();
+    const gesamt    = (brutto - brutto * (rabattPct / 100)) + versand;
+
+    document.getElementById('conf-nr').textContent = b.bestellnummer;
+
+    document.getElementById('conf-details').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+            <div>
+                <p style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);margin-bottom:.5rem;">Kundeninformation</p>
+                <p><strong>${k.vorname} ${k.nachname}</strong></p>
+                <p>${k.kundennummer}</p>
+                <p>${k.email || ''}</p>
+                <p>${k.strasse || ''}</p>
+                <p>${k.plz || ''} ${k.ort || ''}</p>
+            </div>
+            <div>
+                <p style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);margin-bottom:.5rem;">Bestellinformation</p>
+                <p><strong>Bestellnummer:</strong> ${b.bestellnummer}</p>
+                <p><strong>Datum:</strong> ${fmtDate(b.bestelldatum)}</p>
+                <p><strong>Zahlungsart:</strong> ${b.zahlungsart}</p>
+                <p><strong>Status:</strong> ${b.status}</p>
+                ${b.lieferdatum ? `<p><strong>Lieferdatum:</strong> ${fmtDate(b.lieferdatum)}</p>` : ''}
+            </div>
+        </div>
+        <table class="order-table">
+            <thead>
+                <tr>
+                    <th>Pos.</th><th>Artikel</th>
+                    <th class="num">Menge</th>
+                    <th class="num">Einzelpreis</th>
+                    <th class="num">Gesamt</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${pos.map((p, i) => `
+                    <tr>
+                        <td>${i+1}</td>
+                        <td><strong>${p.bezeichnung}</strong><br><small style="color:var(--gray-400)">${p.artikelnummer}</small></td>
+                        <td class="num">${p.menge}&nbsp;${p.einheit || 'St\u00fcck'}</td>
+                        <td class="num">${fmt(p.einzelpreis)}</td>
+                        <td class="num">${fmt(p.menge * p.einzelpreis)}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <div class="totals-box" style="margin-top:1rem;">
+            <div class="total-row final">
+                <span>Gesamtbetrag (inkl. MwSt.)</span>
+                <span>${fmt(gesamt)}</span>
+            </div>
+        </div>
+        ${b.notizen ? `<div class="alert alert-warning" style="margin-top:1rem;"><span>&#128221;</span> ${b.notizen}</div>` : ''}
+    `;
+
+    goTo(4);
+}
+
+function neueBestellung() {
+    S.cart   = [];
+    S.kunde  = null;
+    S.kundeTyp = 'neu';
+
+    ['vorname','nachname','email','telefon','strasse','plz','ort','geburtsdatum'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    document.getElementById('land').value       = 'Deutschland';
+    document.getElementById('k-search').value   = '';
+    document.getElementById('art-search').value = '';
+    document.getElementById('notizen').value    = '';
+    document.getElementById('versandkosten').value = '0';
+    document.getElementById('rabatt').value     = '0';
+    document.getElementById('k-selected').classList.add('hidden');
+
+    clearErrs();
+    switchTab('neu');
+    renderCart();
+    filterArtikel('');
+    goTo(1);
+}
+
+/* ── Helpers ── */
+const EUR = new Intl.NumberFormat('de-DE', {style:'currency', currency:'EUR'});
+function fmt(v)     { return EUR.format(v || 0); }
+function fmtDate(s) { if (!s) return '\u2014'; return new Date(s).toLocaleDateString('de-DE'); }
+function g(id)      { return document.getElementById(id).value.trim(); }
+</script>
+
+</body>
+</html>
