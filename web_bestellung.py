@@ -164,7 +164,7 @@ Ihr Team von Radsport Koch GmbH
         print(f"[E-Mail] Fehler beim Senden: {e}")
         return False
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='assets', static_url_path='/assets')
 app.secret_key = "radsport_koch_geheim_2025"
 
 
