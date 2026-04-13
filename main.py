@@ -33,9 +33,12 @@ def main():
     # Without an explicit AppUserModelID, Windows groups the process under the
     # Python interpreter icon.  Assigning a unique ID makes Windows use the
     # Qt window icon in the taskbar and Alt-Tab dialog instead.
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-        "RadsportKoch.Verwaltungssystem.1"
-    )
+
+    # Check if the operating system is Windows before calling windll
+    if sys.platform == 'win32':
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "RadsportKoch.Verwaltungssystem.1"
+        )
 
     # QApplication must be the very first Qt object created.
     app = QApplication(sys.argv)
